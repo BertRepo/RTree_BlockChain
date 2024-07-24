@@ -1,8 +1,137 @@
 import hashlib
 import json
-from couchdb.http import ResourceConflict
-from couchdb.http import ResourceNotFound
 from collections import deque, defaultdict
+from couchdb.http import ResourceConflict, ResourceNotFound
+
+'''
+    R树和默克尔树共用部分 交易类 和 区块链类
+'''
+# 交易类  R树和默克尔树对应的区块共用这个类 TODO: 后面考虑分开实现 因为其中包含边界值
+class Transaction:
+    def __init__(self, tx_hash, attribute, bounds):
+        self.tx_hash = tx_hash
+        self.attribute = attribute  # 用作索引的属性
+        self.bounds = bounds  # 用于 R 树插入的边界
+
+    # 计算交易的哈希值
+    def calculate_hash(self):
+        return hashlib.sha256(json.dumps(self.tx_hash, sort_keys=True).encode()).hexdigest()
+
+    # 将交易转换为字典格式
+    def to_dict(self):
+        return {
+            'tx_hash': self.tx_hash,
+            'attribute': self.attribute,
+            'bounds': self.bounds
+        }
+
+    # 从字典格式创建交易实例
+    @classmethod
+    def from_dict(cls, data):
+        return cls(
+            tx_hash=data['tx_hash'],
+            attribute=data['attribute'],
+            bounds=data['bounds']
+        )
+
+# 区块链类
+class Blockchain:
+    def __init__(self, db, max_transactions=8):
+        self.chain = []
+        self.db = db
+        self.max_transactions = max_transactions
+        self.current_transactions = []
+        self._load_chain_from_db()
+
+    def _load_chain_from_db(self):
+        for id in self.db:
+            doc = self.db[id]
+            block_type = doc.get('type', None)
+
+            if block_type == 'RTreeBlock':
+                transactions = [Transaction.from_dict(tx_dict) for tx_dict in doc['transactions']]
+                block = Block(r_tree_root=doc['r_tree_root'], transactions=transactions,
+                              timestamp=doc['timestamp'], prev_hash=doc['prev_hash'],
+                              max_transactions=self.max_transactions)
+
+            elif block_type == 'MerkleTreeBlock':
+                transactions = [Transaction.from_dict(tx_dict) for tx_dict in doc['transactions']]
+                block = MerkleTreeBlock(merkle_tree=MerkleTree(transactions), transactions=transactions,
+                                        timestamp=doc['timestamp'], prev_hash=doc['prev_hash'],
+                                        max_transactions=self.max_transactions)
+
+            else:
+                print(f"Warning: Unknown block type for block id {id}. Skipping.")
+                continue
+
+            self.chain.append(block)
+
+    def add_transaction(self, transaction):
+        self.current_transactions.append(transaction)
+        if len(self.current_transactions) >= self.max_transactions:
+            self._create_new_block()
+
+    def _create_new_block(self):
+        prev_block = self.chain[-1] if self.chain else None
+        prev_hash = prev_block.calculate_hash() if prev_block else None
+
+        # 创建R树
+        r_tree = RTree()
+        for tx in self.current_transactions:
+            r_tree.insert(tx)
+        r_tree_root = r_tree.root  # R树的根节点
+
+        # 创建区块
+        new_block = Block(r_tree_root=r_tree_root, transactions=self.current_transactions,
+                          timestamp=self._get_current_timestamp(), prev_hash=prev_hash,
+                          max_transactions=self.max_transactions)
+
+        self.add_block(new_block)
+        self.current_transactions = []
+
+    def add_block(self, block):
+        self.chain.append(block)
+        if isinstance(block, Block):
+            transactions_dict = [tx.to_dict() for tx in block.transactions]
+            self.db.save({
+                'type': 'RTreeBlock',
+                'transactions': transactions_dict,
+                'r_tree_root': block.r_tree_root,
+                'timestamp': block.timestamp,
+                'prev_hash': block.prev_hash,
+                'extra_data': block.extra_data
+            })
+        elif isinstance(block, MerkleTreeBlock):
+            transactions_dict = [tx.to_dict() for tx in block.transactions]
+            self.db.save({
+                'type': 'MerkleTreeBlock',
+                'transactions': transactions_dict,
+                'merkle_root': block.merkle_tree.get_root_hash(),
+                'timestamp': block.timestamp,
+                'prev_hash': block.prev_hash,
+                'extra_data': block.extra_data
+            })
+        else:
+            print("Unsupported block type")
+
+    def validate_block(self, prev_block, new_block):
+        return new_block.prev_hash == prev_block.calculate_hash()
+
+    def search_transaction_by_attribute(self, attribute):
+        for block in self.chain:
+            matching_transactions = [tx for tx in block.transactions if tx.attribute == attribute]
+            if matching_transactions:
+                return matching_transactions
+        return None
+
+    def _get_current_timestamp(self):
+        from datetime import datetime
+        return datetime.now().timestamp()
+
+
+'''
+    R树部分
+'''
 
 # R 树节点类
 class RTreeNode:
@@ -14,12 +143,13 @@ class RTreeNode:
 class RTree:
     def __init__(self, max_entries=4):
         self.root = RTreeNode()
-        self.max_entries = max_entries
+        self.max_entries = max_entries # 每个节点中允许的最大条目数
 
     def insert(self, tx):
-        entry = (tx, tx.bounds)
-        node = self._choose_leaf(self.root, entry)
-        node.entries.append(entry)
+        entry = (tx, tx.bounds) # 将交易和边界 组成元祖
+        node = self._choose_leaf(self.root, entry)  # 从根节点开始，递归地选择最合适的叶节点
+        node.entries.append(entry)  # 插入新条目 到选中的叶节点
+        # 节点中的条目数超过了 节点的最大容量，就对该节点 分裂处理
         if len(node.entries) > self.max_entries:
             self._split_node(node)
 
@@ -78,7 +208,9 @@ class RTree:
 
     def _search(self, node, bounds, results):
         for entry in node.entries:
+            # 检查条目的MBR和查询范围是否相交
             if self._intersects(entry[1], bounds):
+                # 检查节点是否为叶节点
                 if node.is_leaf:
                     results.append(entry[0])
                 else:
@@ -88,42 +220,15 @@ class RTree:
         return not (mbr2[0] > mbr1[2] or mbr2[2] < mbr1[0] or mbr2[1] > mbr1[3] or mbr2[3] < mbr1[1])
 
 
-class Transaction:
-    def __init__(self, tx_hash, attribute, bounds):
-        self.tx_hash = tx_hash
-        self.attribute = attribute  # 用作索引的属性
-        self.bounds = bounds  # 用于 R 树插入的边界
-
-    # 计算交易的哈希值
-    def calculate_hash(self):
-        return hashlib.sha256(json.dumps(self.tx_hash, sort_keys=True).encode()).hexdigest()
-
-    # 将交易转换为字典格式
-    def to_dict(self):
-        return {
-            'tx_hash': self.tx_hash,
-            'attribute': self.attribute,
-            'bounds': self.bounds
-        }
-
-    # 从字典格式创建交易实例
-    @classmethod
-    def from_dict(cls, data):
-        return cls(
-            tx_hash=data['tx_hash'],
-            attribute=data['attribute'],
-            bounds=data['bounds']
-        )
-
-
-# 区块链中的一个区块，包含RTree的根哈希、交易、时间戳和前一个区块的哈希
+# R树区块链中的一个区块，包含RTree的根哈希、交易、时间戳和前一个区块的哈希
 class Block:
-    def __init__(self, r_tree_root, transactions, timestamp, prev_hash):
+    def __init__(self, r_tree_root, transactions, timestamp, prev_hash, max_transactions=8):
         self.r_tree_root = r_tree_root
         self.transactions = transactions  # 只存储交易或交易的哈希
         self.timestamp = timestamp
         self.prev_hash = prev_hash
         self.extra_data = None
+        self.max_transactions = max_transactions  # 最大交易数量
 
     # 计算区块的哈希值
     def calculate_hash(self):
@@ -151,105 +256,9 @@ class Block:
             prev_hash=data['prev_hash'],
         )
 
-# 包含默克尔树的区块
-class MerkleTreeBlock:
-    def __init__(self, merkle_tree, transactions, timestamp, prev_hash):
-        self.merkle_root = merkle_tree  # Merkle Tree 的根哈希
-        self.transactions = transactions
-        self.timestamp = timestamp  # 区块的时间戳
-        self.prev_hash = prev_hash  # 前一个区块的哈希
-        self.extra_data = None  # 用于存储额外数据
-
-    # 存储额外数据
-    def add_extra_data(self, data):
-        self.extra_data = data
-
-    # 转成字典形式
-    def to_dict(self):
-        return {
-            'merkle_root': self.merkle_root,
-            'transactions': [tx.to_dict() for tx in self.transactions],
-            'timestamp': self.timestamp,
-            'prev_hash': self.prev_hash,
-            'extra_data': self.extra_data
-        }
-
-    # 从字典形式恢复成默克尔树区块类
-    @classmethod
-    def from_dict(cls, data):
-        transactions = [Transaction.from_dict(tx) for tx in data['transactions']]
-        merkle_tree = MerkleTree(transactions)
-        return cls(
-            merkle_tree=merkle_tree,
-            transactions=transactions,
-            timestamp=data['timestamp'],
-            prev_hash=data['prev_hash']
-        )
-
-
-# 区块链类
-class Blockchain:
-    def __init__(self, db):
-        self.chain = []
-        self.db = db
-        self._load_chain_from_db()
-
-    def _load_chain_from_db(self):
-        for id in self.db:
-            doc = self.db[id]
-            block_type = doc.get('type', None)
-
-            if block_type == 'RTreeBlock':
-                transactions = [Transaction.from_dict(tx_dict) for tx_dict in doc['transactions']]
-                block = Block(r_tree_root=doc['r_tree_root'], transactions=transactions,
-                              timestamp=doc['timestamp'], prev_hash=doc['prev_hash'])
-
-            elif block_type == 'MerkleTreeBlock':
-                transactions = [Transaction.from_dict(tx_dict) for tx_dict in doc['transactions']]
-                block = MerkleTreeBlock(merkle_tree=MerkleTree(transactions), transactions=transactions,
-                                        timestamp=doc['timestamp'], prev_hash=doc['prev_hash'])
-
-            else:
-                print(f"Warning: Unknown block type for block id {id}. Skipping.")
-                continue
-
-            self.chain.append(block)
-
-    def add_block(self, block):
-        self.chain.append(block)
-        if isinstance(block, Block):
-            transactions_dict = [tx.to_dict() for tx in block.transactions]
-            self.db.save({
-                'type': 'RTreeBlock',
-                'transactions': transactions_dict,
-                'r_tree_root': block.r_tree_root,
-                'timestamp': block.timestamp,
-                'prev_hash': block.prev_hash,
-                'extra_data': block.extra_data
-            })
-        elif isinstance(block, MerkleTreeBlock):
-            transactions_dict = [tx.to_dict() for tx in block.transactions]
-            self.db.save({
-                'type': 'MerkleTreeBlock',
-                'transactions': transactions_dict,
-                'merkle_root': block.merkle_root,
-                'timestamp': block.timestamp,
-                'prev_hash': block.prev_hash,
-                'extra_data': block.extra_data
-            })
-        else:
-            print("Unsupported block type")
-
-    def validate_block(self, prev_block, new_block):
-        return new_block.prev_hash == prev_block.calculate_hash()
-
-    def search_transaction_by_attribute(self, attribute):
-        for block in self.chain:
-            matching_transactions = [tx for tx in block.transactions if tx.attribute == attribute]
-            if matching_transactions:
-                return matching_transactions
-        return None
-
+'''
+    默克尔树部分
+'''
 
 # 默克尔树中的一个节点，包含哈希值及其左右子节点
 class MerkleNode:
@@ -258,8 +267,9 @@ class MerkleNode:
         self.left = left
         self.right = right
 
+# 默克尔树类
 class MerkleTree:
-    def __init__(self, transactions, ):
+    def __init__(self, transactions):
         self.transactions = transactions
         self.root = self.build_merkle_tree([tx.calculate_hash() for tx in self.transactions])
 
@@ -303,11 +313,48 @@ class MerkleTree:
         merkle_tree = cls(transactions)
         return merkle_tree
 
+# 默克尔树区块链中的一个区块
+class MerkleTreeBlock:
+    def __init__(self, merkle_tree, transactions, timestamp, prev_hash, max_transactions=8):
+        self.merkle_tree = merkle_tree  # Merkle Tree
+        self.transactions = transactions
+        self.timestamp = timestamp  # 区块的时间戳
+        self.prev_hash = prev_hash  # 前一个区块的哈希
+        self.extra_data = None  # 用于存储额外数据
+        self.max_transactions = max_transactions  # 最大交易数量
+
+    # 存储额外数据
+    def add_extra_data(self, data):
+        self.extra_data = data
+
+    # 转成字典形式
+    def to_dict(self):
+        return {
+            'merkle_root': self.merkle_tree.get_root_hash(),
+            'transactions': [tx.to_dict() for tx in self.transactions],
+            'timestamp': self.timestamp,
+            'prev_hash': self.prev_hash,
+            'extra_data': self.extra_data
+        }
+
+    # 从字典形式恢复成默克尔树区块类
+    @classmethod
+    def from_dict(cls, data):
+        transactions = [Transaction.from_dict(tx) for tx in data['transactions']]
+        merkle_tree = MerkleTree(transactions)
+        return cls(
+            merkle_tree=merkle_tree,
+            transactions=transactions,
+            timestamp=data['timestamp'],
+            prev_hash=data['prev_hash']
+        )
+
+
 
 # 继承自 Blockchain，增加了全局索引和缓存功能
 class BlockchainWithIndex(Blockchain):
-    def __init__(self, db, index_db):
-        super().__init__(db)
+    def __init__(self, db, index_db, max_transactions=8):
+        super().__init__(db, max_transactions)
         self.index_db = index_db
         try:
             self.global_attribute_index = defaultdict(list, self.index_db['global_attribute_index'])
@@ -363,8 +410,6 @@ class BlockchainWithIndex(Blockchain):
             if block.calculate_hash() == block_hash:
                 return block
         return None
-
-
 # B+树中的节点（BMTree中的一个节点，可以是叶节点或内部节点） 改成R树的节点
 class Node:
     def __init__(self, is_leaf=True):
