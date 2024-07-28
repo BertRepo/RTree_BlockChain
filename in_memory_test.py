@@ -4,6 +4,7 @@ from blockchain import MerkleTree, RTree
 from global_method import generate_transactions, measure_insert_time_r_tree, measure_insert_time_mt, measure_search_time_r_tree, measure_search_time_mt
 
 
+# 针对两种树结构本身 的 创建 查询的测试
 def in_memory_test():
     num_transactions = [64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384]    # 交易量设置
     num_search_queries = 1  # 随机抽取50个
