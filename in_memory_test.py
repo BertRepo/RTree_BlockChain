@@ -1,7 +1,7 @@
 import random
 
 from blockchain import MerkleTree, RTree
-from global_method import generate_transactions, measure_insert_time_r_tree, measure_insert_time_mt, measure_search_time_r_tree, measure_search_time_mt
+from global_method import get_dataset, measure_insert_time_r_tree, measure_insert_time_mt, measure_search_time_r_tree, measure_search_time_mt
 
 
 # 针对两种树结构本身 的 创建 查询的测试
@@ -17,7 +17,7 @@ def in_memory_test():
 
     for n in num_transactions:
         # 生成交易
-        transactions = generate_transactions(n)
+        transactions = get_dataset(n)
         # 随机采样50个数据进行查找
         bounds_to_search = random.sample([tx.bounds for tx in transactions], num_search_queries)
 

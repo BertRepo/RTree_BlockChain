@@ -9,6 +9,7 @@ import matplotlib
 import pandas as pd
 from matplotlib.pyplot import MultipleLocator
 import numpy as np
+import pandas as pd
 
 # 加载字体
 from matplotlib.font_manager import FontProperties
@@ -33,8 +34,7 @@ filename = "./dataset/ahealthdata.csv"
 # 随机生成哈希值
 def random_string(length=10):
     """生成随机字符串作为交易哈希"""
-    letters = string.ascii_lowercase
-    return ''.join(random.choice(letters) for i in range(length))
+    return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
 
 # TODO: 矩形边界设置有问题 感觉不对劲 另外也没有实现真的二维
 def generate_transactions(num_transactions):
@@ -49,23 +49,29 @@ def generate_transactions(num_transactions):
         print(tx_hash, attribute, bounds)
     return transactions
 
+# 数据转换 针对数据集定制化
+def transform_data(data):
+    data['baby_birthday'] = pd.to_datetime(data['baby_birthday'], dayfirst=True)  # 将宝宝生日转换为日期时间格式
+    data['baby_sex'] = data['baby_sex'].map({1: '男', 2: '女'})  # 将宝宝性别转换为男女
+    return data
+
 '''
     使用实验室的先心病儿童的一万条数据
     传入参数：交易数量、属性个数
 '''
 def get_dataset(num_transactions):
-    """获取数据集中数据"""
-    data = pd.read_csv(filename)    # dataframe形式
-    print(data)
-    # print(data.values)  # 数组形式
+    data = pd.read_csv(filename)  # 读取CSV文件
+    data = transform_data(data)  # 数据转换
+
     transactions = []
     for i in range(num_transactions):
         tx_hash = random_string()
-        attribute = random.randint(1, 10000)
-        # 随机生成边界，假设为二维范围
-        bounds = (random.randint(0, 100), random.randint(0, 100), random.randint(100, 200), random.randint(100, 200))
-        transactions.append(Transaction(tx_hash, attribute, bounds))  # 添加bounds 二维的边界范围值
-        print(tx_hash, attribute, bounds)
+        attribute = data.iloc[i].values  # 使用转换后的数据作为交易属性值
+        # 假设我们将 'baby_birthday' 和 'baby_sex' 作为二维的边界属性
+        bounds = (data.iloc[i]['baby_birthday'].timestamp(), 0 if data.iloc[i]['baby_sex'] == '男' else 1,
+                  data.iloc[i]['baby_birthday'].timestamp(), 0 if data.iloc[i]['baby_sex'] == '男' else 1)
+        transactions.append(Transaction(tx_hash, attribute, bounds))  # 将转换后的数据作为交易存储在区块中
+        print(tx_hash, bounds)
     return transactions
 
 def measure_insert_time_bm_tree(transactions, order):

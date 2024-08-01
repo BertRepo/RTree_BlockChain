@@ -1,5 +1,6 @@
 import hashlib
 import json
+from datetime import datetime
 from collections import deque, defaultdict
 from couchdb.http import ResourceConflict, ResourceNotFound
 
@@ -48,14 +49,16 @@ class Blockchain:
             doc = self.db[id]
             block_type = doc.get('type', None)
 
+            transactions = [Transaction.from_dict(tx_dict) for tx_dict in doc['transactions']]
+
             # TODO: 这个判断 屎山代码 后面有空最好修改下 没有必要判断每个区块类型（同区块类型都是放在同一个数据库中的）
             if block_type == 'RTreeBlock':
-                transactions = [Transaction.from_dict(tx_dict) for tx_dict in doc['transactions']]
+                
                 block = Block(r_tree_root=doc['r_tree_root'], transactions=transactions,
                               timestamp=doc['timestamp'], prev_hash=doc['prev_hash'],
                               max_transactions=self.max_transactions)
             elif block_type == 'MerkleTreeBlock':
-                transactions = [Transaction.from_dict(tx_dict) for tx_dict in doc['transactions']]
+                
                 block = MerkleTreeBlock(merkle_root=doc['merkle_root'], transactions=transactions,
                                         timestamp=doc['timestamp'], prev_hash=doc['prev_hash'],
                                         max_transactions=self.max_transactions)
@@ -77,7 +80,7 @@ class Blockchain:
         r_tree = RTree()
         for tx in self.current_transactions:
             r_tree.insert(tx)
-        r_tree_root = r_tree.calculate_merkle_root()  # 修正: calculate_merkle_root 方法
+        r_tree_root = r_tree.calculate_merkle_root()
         new_block = Block(r_tree_root=r_tree_root, transactions=self.current_transactions,
                           timestamp=self._get_current_timestamp(), prev_hash=prev_hash,
                           max_transactions=self.max_transactions)
@@ -94,8 +97,8 @@ class Blockchain:
 
     def add_block(self, block):
         self.chain.append(block)
+        transactions_dict = [tx.to_dict() for tx in block.transactions]
         if isinstance(block, Block):
-            transactions_dict = [tx.to_dict() for tx in block.transactions]
             self.db.save({
                 'type': 'RTreeBlock',
                 'transactions': transactions_dict,
@@ -105,7 +108,6 @@ class Blockchain:
                 'extra_data': block.extra_data
             })
         elif isinstance(block, MerkleTreeBlock):
-            transactions_dict = [tx.to_dict() for tx in block.transactions]
             self.db.save({
                 'type': 'MerkleTreeBlock',
                 'transactions': transactions_dict,
@@ -120,6 +122,7 @@ class Blockchain:
     def validate_block(self, prev_block, new_block):
         return new_block.prev_hash == prev_block.calculate_hash()
 
+    # TODO: 肯定要修改的
     def search_transaction_by_attribute(self, attribute):
         for block in self.chain:
             matching_transactions = [tx for tx in block.transactions if tx.attribute == attribute]
@@ -128,7 +131,6 @@ class Blockchain:
         return None
 
     def _get_current_timestamp(self):
-        from datetime import datetime
         return datetime.now().timestamp()
 
 
@@ -141,6 +143,26 @@ class RTreeNode:
     def __init__(self, is_leaf=True):
         self.is_leaf = is_leaf
         self.entries = []  # 叶子节点存放数据，非叶子节点存放子节点
+        self.bounds = None  # 存储节点的边界
+
+    def update_bounds(self):
+        if self.entries:
+            print(self.entries[0][1])
+            for i in range(len(self.entries[0][1])):
+                print(min(entry[1][i] for entry in self.entries))
+            min_bounds = [min(entry[1][i] for entry in self.entries) for i in range(len(self.entries[0][1]))]
+            max_bounds = [max(entry[1][i + len(self.entries[0][1]) // 2] for entry in self.entries) for i in range(len(self.entries[0][1]) // 2)]
+            print("最小",min_bounds)
+            print("最大",max_bounds)
+            self.bounds = tuple(min_bounds + max_bounds)
+            print("最后",self.bounds)
+        # if not self.entries:
+        #     return (0, 0, 0, 0)
+        # min_x = min(entry[1][0] for entry in self.entries)
+        # min_y = min(entry[1][1] for entry in self.entries)
+        # max_x = max(entry[1][2] for entry in self.entries)
+        # max_y = max(entry[1][3] for entry in self.entries)
+        # return (min_x, min_y, max_x, max_y)
 
 # R 树类
 class RTree:
@@ -149,17 +171,19 @@ class RTree:
         self.max_entries = max_entries # 每个节点中允许的最大条目数
 
     def insert(self, tx):
-        entry = (tx, tx.bounds) # 将交易和边界 组成元祖
+        entry = (tx, tx.bounds) # 将交易和边界 组成元组
         node = self._choose_leaf(self.root, entry)  # 从根节点开始，递归地选择最合适的叶节点
         node.entries.append(entry)  # 插入新条目 到选中的叶节点
         # 节点中的条目数超过了 节点的最大容量，就对该节点 分裂处理
         if len(node.entries) > self.max_entries:
             self._split_node(node)
+        self._adjust_tree(node)
 
     def search(self, bounds):
         results = []
         print(f"Searching with bounds: {bounds}")  # 调试信息
         self._search(self.root, bounds, results)
+        print(f"结果: {results}")
         return results
 
     def calculate_merkle_root(self):
@@ -167,31 +191,39 @@ class RTree:
         return hashlib.sha256(json.dumps("dummy_root").encode()).hexdigest()
 
     def _choose_leaf(self, node, entry):
+        print("Node Entries:", node.entries)
         if node.is_leaf:
+            print("叶子")
             return node
         else:
-            best_child = min(node.entries, key=lambda child: self._calc_enlargement(child[1], entry[1]))
+            print("非叶子")
+            best_child = min(node.entries, key=lambda child: self._calc_enlargement(child[0].bounds, entry[1]))
+            print("Best Child:", best_child)
             return self._choose_leaf(best_child[0], entry)
 
     def _split_node(self, node):
         mid = len(node.entries) // 2
         new_node = RTreeNode(is_leaf=node.is_leaf)
         node.entries, new_node.entries = node.entries[:mid], node.entries[mid:]
+        node.update_bounds()
+        new_node.update_bounds()
         if node == self.root:
             new_root = RTreeNode(is_leaf=False)
-            new_root.entries.append((self.root, self._get_mbr(self.root.entries)))
-            new_root.entries.append((new_node, self._get_mbr(new_node.entries)))
+            new_root.entries.append((self.root, self.root.bounds))
+            new_root.entries.append((new_node, new_node.bounds))
+            new_root.update_bounds()
             self.root = new_root
         else:
             parent = self._find_parent(self.root, node)
-            parent.entries.append((new_node, self._get_mbr(new_node.entries)))
+            parent.entries.append((new_node, new_node.bounds))
+            parent.update_bounds()
             if len(parent.entries) > self.max_entries:
                 self._split_node(parent)
 
     def _find_parent(self, current_node, target_node):
         if current_node.is_leaf or current_node == target_node:
             return None
-        for child, mbr in current_node.entries:
+        for child, _ in current_node.entries:
             if child == target_node:
                 return current_node
             parent = self._find_parent(child, target_node)
@@ -200,22 +232,29 @@ class RTree:
         return None
 
     def _calc_enlargement(self, mbr1, mbr2):
-        combined_mbr = (min(mbr1[0], mbr2[0]), min(mbr1[1], mbr2[1]), max(mbr1[2], mbr2[2]), max(mbr1[3], mbr2[3]))
+        print(f"Combining MBRs: {mbr1}, {mbr2}")
+        if len(mbr1) != len(mbr2):
+            raise ValueError("MBR lengths do not match")
+        combined_mbr = self._combine_mbr(mbr1, mbr2)
+        print(f"Combined MBR: {combined_mbr}")
         return self._calc_area(combined_mbr) - self._calc_area(mbr1)
 
     def _calc_area(self, mbr):
-        return (mbr[2] - mbr[0]) * (mbr[3] - mbr[1])
+        return (mbr[len(mbr) // 2] - mbr[0]) * (mbr[len(mbr) // 2 + 1] - mbr[1])
 
-    def _get_mbr(self, entries):
-        min_x = min(entry[1][0] for entry in entries)
-        min_y = min(entry[1][1] for entry in entries)
-        max_x = max(entry[1][2] for entry in entries)
-        max_y = max(entry[1][3] for entry in entries)
-        return (min_x, min_y, max_x, max_y)
+    # def _combine_mbr(self, mbr1, mbr2):
+    #     min_bounds = [min(mbr1[i], mbr2[i]) for i in range(len(mbr1) // 2)]
+    #     max_bounds = [max(mbr1[i + len(mbr1) // 2], mbr2[i + len(mbr1) // 2]) for i in range(len(mbr1) // 2)]
+    #     return tuple(min_bounds + max_bounds)
+    def _combine_mbr(self, mbr1, mbr2):
+        combined_mbr = []
+        for i in range(len(mbr1) // 2):
+            combined_mbr.append(min(mbr1[i], mbr2[i]))
+            combined_mbr.append(max(mbr1[i + len(mbr1) // 2], mbr2[i + len(mbr1) // 2]))
+        return combined_mbr
 
     def _search(self, node, bounds, results):
         for entry in node.entries:
-            print(f"Checking entry: {entry}, bounds: {bounds}")  # 调试信息
             if self._intersects(entry[1], bounds):
                 if node.is_leaf:
                     results.append(entry[0])
@@ -223,12 +262,13 @@ class RTree:
                     self._search(entry[0], bounds, results)
 
     def _intersects(self, mbr1, mbr2):
-        print(f"mbr1: {mbr1}, mbr2: {mbr2}")  # 调试信息
-        if not (isinstance(mbr1, tuple) and len(mbr1) == 4 and isinstance(mbr2, tuple) and len(mbr2) == 4):
-            raise ValueError("MBR 应该是一个包含四个元素的元组。")
+        return all(mbr1[i] <= mbr2[i + len(mbr1) // 2] and mbr2[i] <= mbr1[i + len(mbr1) // 2] for i in range(len(mbr1) // 2))
 
-        return not (mbr2[0] > mbr1[2] or mbr2[2] < mbr1[0] or mbr2[1] > mbr1[3] or mbr2[3] < mbr1[1])
-
+    def _adjust_tree(self, node):
+        while node != self.root:
+            parent = self._find_parent(self.root, node)
+            parent.update_bounds()
+            node = parent
 
 # R树区块链中的一个区块，包含RTree的根哈希、交易、时间戳和前一个区块的哈希
 class Block:

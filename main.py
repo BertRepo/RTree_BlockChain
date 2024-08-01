@@ -65,6 +65,6 @@ def plot_database_height_test():
 
 
 if __name__ == '__main__':
-    # plot_memory_test()
-    plot_database_tran_test()
+    plot_memory_test()
+    # plot_database_tran_test()
     # plot_database_height_test()
