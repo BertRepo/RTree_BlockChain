@@ -7,6 +7,8 @@ from couchdb.http import ResourceConflict, ResourceNotFound
 '''
     R树和默克尔树共用部分 交易类 和 区块链类
 '''
+
+
 # 交易类  R树和默克尔树对应的区块共用这个类 TODO: 后面考虑分开实现 因为其中包含边界值
 class Transaction:
     def __init__(self, tx_hash, attribute, bounds):
@@ -35,6 +37,7 @@ class Transaction:
             bounds=data['bounds']
         )
 
+
 # 区块链类
 class Blockchain:
     def __init__(self, db, max_transactions=8):
@@ -53,12 +56,12 @@ class Blockchain:
 
             # TODO: 这个判断 屎山代码 后面有空最好修改下 没有必要判断每个区块类型（同区块类型都是放在同一个数据库中的）
             if block_type == 'RTreeBlock':
-                
+
                 block = Block(r_tree_root=doc['r_tree_root'], transactions=transactions,
                               timestamp=doc['timestamp'], prev_hash=doc['prev_hash'],
                               max_transactions=self.max_transactions)
             elif block_type == 'MerkleTreeBlock':
-                
+
                 block = MerkleTreeBlock(merkle_root=doc['merkle_root'], transactions=transactions,
                                         timestamp=doc['timestamp'], prev_hash=doc['prev_hash'],
                                         max_transactions=self.max_transactions)
@@ -138,6 +141,7 @@ class Blockchain:
     R树部分
 '''
 
+
 # R 树节点类
 class RTreeNode:
     def __init__(self, is_leaf=True):
@@ -148,7 +152,8 @@ class RTreeNode:
     def update_bounds(self):
         if self.entries:
             min_bounds = [min(entry[1][i] for entry in self.entries) for i in range(len(self.entries[0][1]) // 2)]
-            max_bounds = [max(entry[1][i + len(self.entries[0][1]) // 2] for entry in self.entries) for i in range(len(self.entries[0][1]) // 2)]
+            max_bounds = [max(entry[1][i + len(self.entries[0][1]) // 2] for entry in self.entries) for i in
+                          range(len(self.entries[0][1]) // 2)]
             self.bounds = tuple(min_bounds + max_bounds)
         else:
             self.bounds = None  # 没有条目时设置边界为空
@@ -158,7 +163,7 @@ class RTreeNode:
 class RTree:
     def __init__(self, max_entries=4):
         self.root = RTreeNode()
-        self.max_entries = max_entries # 每个节点中允许的最大条目数
+        self.max_entries = max_entries  # 每个节点中允许的最大条目数
 
     def insert(self, tx):
         entry = (tx, tx.bounds)  # 将交易和边界组成元组
@@ -169,8 +174,6 @@ class RTree:
         if len(node.entries) > self.max_entries:  # 节点中的条目数超过了节点的最大容量，就对该节点进行分裂处理
             self._split_node(node)
 
-        self._adjust_tree(node)
-
     def search(self, bounds):
         results = []
         print(f"Searching with bounds: {bounds}")  # 调试信息
@@ -178,18 +181,14 @@ class RTree:
         print(f"结果: {results}")
         return results
 
-    def calculate_merkle_root(self):
-        # 假设有一个从 RTree 计算 Merkle 根的方法
-        return hashlib.sha256(json.dumps("dummy_root").encode()).hexdigest()
-
     def _choose_leaf(self, node, entry):
-        if node.is_leaf:
-            return node
-        else:
-            best_child = min(node.entries, key=lambda child: self._calc_enlargement(child[0].bounds, entry[1]))
-            return self._choose_leaf(best_child[0], entry)
+        while not node.is_leaf:
+            node = min(node.entries, key=lambda child: self._calc_enlargement(child[0].bounds, entry[1]))[0]
+        return node
 
     def _split_node(self, node):
+        # 分裂节点时考虑重叠和填充度
+        # 这里只是一个示例，实际的R*-树分裂策略更复杂
         mid = len(node.entries) // 2
         new_node = RTreeNode(is_leaf=node.is_leaf)
         node.entries, new_node.entries = node.entries[:mid], node.entries[mid:]
@@ -210,14 +209,14 @@ class RTree:
                 self._split_node(parent)
 
     def _find_parent(self, current_node, target_node):
-        if current_node.is_leaf or current_node == target_node:
-            return None
-        for child, _ in current_node.entries:
-            if child == target_node:
-                return current_node
-            parent = self._find_parent(child, target_node)
-            if parent:
-                return parent
+        stack = [current_node]
+        while stack:
+            node = stack.pop()
+            for child, _ in node.entries:
+                if child == target_node:
+                    return node
+                if not child.is_leaf:
+                    stack.append(child)
         return None
 
     def _calc_enlargement(self, mbr1, mbr2):
@@ -235,21 +234,21 @@ class RTree:
         return tuple(combined_mbr)
 
     def _search(self, node, bounds, results):
-        for entry in node.entries:
-            if self._intersects(entry[1], bounds):
-                if node.is_leaf:
-                    results.append(entry[0])
-                else:
-                    self._search(entry[0], bounds, results)
+        stack = [node]
+        while stack:
+            node = stack.pop()
+            if node.bounds and self._intersects(node.bounds, bounds):
+                for entry in node.entries:
+                    if self._intersects(entry[1], bounds):
+                        if node.is_leaf:
+                            results.append(entry[0])
+                        else:
+                            stack.append(entry[0])
 
     def _intersects(self, mbr1, mbr2):
-        return all(mbr1[i] <= mbr2[i + len(mbr1) // 2] and mbr2[i] <= mbr1[i + len(mbr1) // 2] for i in range(len(mbr1) // 2))
+        return all(
+            mbr1[i] <= mbr2[i + len(mbr1) // 2] and mbr2[i] <= mbr1[i + len(mbr1) // 2] for i in range(len(mbr1) // 2))
 
-    def _adjust_tree(self, node):
-        while node != self.root:
-            parent = self._find_parent(self.root, node)
-            parent.update_bounds()
-            node = parent
 
 # R树区块链中的一个区块，包含RTree的根哈希、交易、时间戳和前一个区块的哈希
 class Block:
@@ -287,9 +286,11 @@ class Block:
             prev_hash=data['prev_hash'],
         )
 
+
 '''
     默克尔树部分
 '''
+
 
 # 默克尔树中的一个节点，包含哈希值及其左右子节点
 # class MerkleNode:
@@ -312,8 +313,6 @@ class MerkleNode:
 
     def is_leaf(self):
         return not self.left and not self.right
-
-
 
 
 # 默克尔树类
@@ -456,7 +455,6 @@ class MerkleTreeBlock:
         )
 
 
-
 # 继承自 Blockchain，增加了全局索引和缓存功能
 class BlockchainWithIndex(Blockchain):
     def __init__(self, db, index_db, max_transactions=8):
@@ -468,7 +466,6 @@ class BlockchainWithIndex(Blockchain):
             self.global_attribute_index = defaultdict(list)
         self.cache = {}
         self.pending_blocks = deque()
-
 
     def add_block(self, block):
         super().add_block(block)
@@ -535,6 +532,7 @@ class Node:
     # 计算节点的哈希值
     def calculate_hash(self):
         return hashlib.sha256(json.dumps(self.keys, sort_keys=True).encode()).hexdigest()
+
 
 # BMTree（B+树的变种），用于存储和索引交易
 class BMTree:
