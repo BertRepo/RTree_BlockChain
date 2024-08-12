@@ -1,8 +1,23 @@
 import hashlib
 import json
+import numpy as np
 from datetime import datetime
 from collections import deque, defaultdict
 from couchdb.http import ResourceConflict, ResourceNotFound
+
+
+def convert_ndarray_to_list(obj):
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, (np.integer, np.int64)):
+        return int(obj)  # Convert numpy int64 to standard Python int
+    elif isinstance(obj, dict):
+        return {k: convert_ndarray_to_list(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_ndarray_to_list(i) for i in obj]
+    else:
+        return obj
+
 
 '''
     R树和默克尔树共用部分 交易类 和 区块链类
@@ -97,7 +112,7 @@ class Blockchain:
 
     def add_block(self, block):
         self.chain.append(block)
-        transactions_dict = [tx.to_dict() for tx in block.transactions]
+        transactions_dict = convert_ndarray_to_list([tx.to_dict() for tx in block.transactions])
         if isinstance(block, Block):
             self.db.save({
                 'type': 'RTreeBlock',
@@ -105,7 +120,7 @@ class Blockchain:
                 'r_tree_root': block.r_tree_root,
                 'timestamp': block.timestamp,
                 'prev_hash': block.prev_hash,
-                'extra_data': block.extra_data
+                # 'extra_data': block.extra_data
             })
         elif isinstance(block, MerkleTreeBlock):
             self.db.save({
@@ -114,10 +129,11 @@ class Blockchain:
                 'merkle_root': block.merkle_root,
                 'timestamp': block.timestamp,
                 'prev_hash': block.prev_hash,
-                'extra_data': block.extra_data
+                # 'extra_data': block.extra_data
             })
         else:
             print("Unsupported block type")
+
 
     def validate_block(self, prev_block, new_block):
         return new_block.prev_hash == prev_block.calculate_hash()
@@ -173,9 +189,8 @@ class RTree:
 
     def search(self, bounds):
         results = []
-        print(f"Searching with bounds: {bounds}")  # 调试信息
         self._search(self.root, bounds, results)
-        print(f"结果: {results}")
+        print(f"R树查询结果: {results}")
         return results
 
     def calculate_merkle_root(self):
@@ -189,6 +204,7 @@ class RTree:
             best_child = min(node.entries, key=lambda child: self._calc_enlargement(child[0].bounds, entry[1]))
             return self._choose_leaf(best_child[0], entry)
 
+    # 二分分裂策略
     def _split_node(self, node):
         mid = len(node.entries) // 2
         new_node = RTreeNode(is_leaf=node.is_leaf)
@@ -208,6 +224,32 @@ class RTree:
             parent.update_bounds()
             if len(parent.entries) > self.max_entries:
                 self._split_node(parent)
+
+    # # 排序分裂策略
+    # def _split_node(self, node):
+    #     mid = len(node.entries) // 2
+    #     new_node = RTreeNode(is_leaf=node.is_leaf)
+    #
+    #     sorted_entries = sorted(node.entries, key=lambda entry: entry[1])
+    #     node.entries, new_node.entries = sorted_entries[:mid], sorted_entries[mid:]
+    #
+    #     node.update_bounds()
+    #     new_node.update_bounds()
+    #
+    #     # print(f"分裂后的节点边界：\n  当前节点：{node.bounds}\n  新节点：{new_node.bounds}")
+    #
+    #     if node == self.root:
+    #         new_root = RTreeNode(is_leaf=False)
+    #         new_root.entries.append((self.root, self.root.bounds))
+    #         new_root.entries.append((new_node, new_node.bounds))
+    #         new_root.update_bounds()
+    #         self.root = new_root
+    #     else:
+    #         parent = self._find_parent(self.root, node)
+    #         parent.entries.append((new_node, new_node.bounds))
+    #         parent.update_bounds()
+    #         if len(parent.entries) > self.max_entries:
+    #             self._split_node(parent)
 
     def _find_parent(self, current_node, target_node):
         if current_node.is_leaf or current_node == target_node:
@@ -235,6 +277,9 @@ class RTree:
         return tuple(combined_mbr)
 
     def _search(self, node, bounds, results):
+        if node.bounds and not self._intersects(node.bounds, bounds):
+            return
+
         for entry in node.entries:
             if self._intersects(entry[1], bounds):
                 if node.is_leaf:
@@ -298,20 +343,20 @@ class Block:
 #         self.left = left
 #         self.right = right
 
-class MerkleNode:
-    def __init__(self, hash_value=None, left=None, right=None):
-        self.hash_value = hash_value
-        self.left = left
-        self.right = right
-        self.entries = []  # 存储条目（交易）的列表
-
-    def update_hash(self):
-        left_hash = self.left.hash_value if self.left else ''
-        right_hash = self.right.hash_value if self.right else ''
-        self.hash_value = hashlib.sha256((left_hash + right_hash).encode()).hexdigest()
-
-    def is_leaf(self):
-        return not self.left and not self.right
+# class MerkleNode:
+#     def __init__(self, hash_value=None, left=None, right=None):
+#         self.hash_value = hash_value
+#         self.left = left
+#         self.right = right
+#         self.entries = []  # 存储条目（交易）的列表
+#
+#     def update_hash(self):
+#         left_hash = self.left.hash_value if self.left else ''
+#         right_hash = self.right.hash_value if self.right else ''
+#         self.hash_value = hashlib.sha256((left_hash + right_hash).encode()).hexdigest()
+#
+#     def is_leaf(self):
+#         return not self.left and not self.right
 
 
 
@@ -347,6 +392,85 @@ class MerkleNode:
 #         if node.hash_value == tx_hash:
 #             return True
 #         return self._verify_transaction(node.left, tx_hash) or self._verify_transaction(node.right, tx_hash)
+
+# class MerkleTree:
+#     def __init__(self, max_entries=4):
+#         self.root = None
+#         self.max_entries = max_entries  # 每个节点中允许的最大条目数
+#
+#     def insert(self, transaction):
+#         new_node = MerkleNode(hash_value=transaction.calculate_hash())
+#         if self.root is None:
+#             self.root = new_node
+#         else:
+#             self._insert(new_node)
+#         self._adjust_tree()
+#
+#     def _insert(self, new_node):
+#         stack = [self.root]
+#         while stack:
+#             node = stack.pop()
+#             if node.is_leaf():
+#                 if len(node.entries) < self.max_entries:
+#                     node.entries.append(new_node)
+#                     node.update_hash()
+#                     return
+#                 else:
+#                     new_parent = MerkleNode(left=node, right=new_node)
+#                     new_parent.update_hash()
+#                     self.root = new_parent
+#                     return
+#             else:
+#                 if node.right is None or (node.right.is_leaf() and len(node.right.entries) < self.max_entries):
+#                     stack.append(node.right)
+#                 else:
+#                     stack.append(node.left)
+#                 if node.right is None:
+#                     node.right = new_node
+#                 elif node.left is None:
+#                     node.left = new_node
+#
+#     def _adjust_tree(self):
+#         if not self.root:
+#             return
+#
+#         stack = [self.root]
+#         while stack:
+#             node = stack.pop()
+#             if node.left or node.right:
+#                 if node.left:
+#                     stack.append(node.left)
+#                 if node.right:
+#                     stack.append(node.right)
+#                 node.update_hash()
+#
+#     def get_root_hash(self):
+#         return self.root.hash_value if self.root else None
+#
+#     def verify_transaction(self, transaction):
+#         return self._verify_transaction(self.root, transaction.calculate_hash())
+#
+#     def _verify_transaction(self, node, tx_hash):
+#         if node is None:
+#             return False
+#         if node.hash_value == tx_hash:
+#             return True
+#         return self._verify_transaction(node.left, tx_hash) or self._verify_transaction(node.right, tx_hash)
+class MerkleNode:
+    def __init__(self, hash_value=None, left=None, right=None):
+        self.hash_value = hash_value
+        self.left = left
+        self.right = right
+        self.entries = []  # 存储条目（交易）的列表
+
+    def update_hash(self):
+        left_hash = self.left.hash_value if self.left else ''
+        right_hash = self.right.hash_value if self.right else ''
+        self.hash_value = hashlib.sha256((left_hash + right_hash).encode()).hexdigest()
+
+    def is_leaf(self):
+        return not self.left and not self.right
+
 class MerkleTree:
     def __init__(self, max_entries=4):
         self.root = None
@@ -357,52 +481,55 @@ class MerkleTree:
         if self.root is None:
             self.root = new_node
         else:
-            self._insert(new_node)
-        self._adjust_tree()
-
-    def _insert(self, new_node):
-        stack = [self.root]
-        while stack:
-            node = stack.pop()
-            if node.is_leaf():
-                if len(node.entries) < self.max_entries:
-                    node.entries.append(new_node)
-                    node.update_hash()
-                    return
+            stack = [self.root]
+            while stack:
+                node = stack.pop()
+                if node.is_leaf():
+                    if len(node.entries) < self.max_entries:
+                        node.entries.append(new_node)
+                        node.update_hash()
+                        break
+                    else:
+                        # 创建新的父节点
+                        new_parent = MerkleNode(left=node, right=new_node)
+                        new_parent.update_hash()
+                        self.root = new_parent
+                        break
                 else:
-                    new_parent = MerkleNode(left=node, right=new_node)
-                    new_parent.update_hash()
-                    self.root = new_parent
-                    return
-            else:
-                if node.right is None or (node.right.is_leaf() and len(node.right.entries) < self.max_entries):
-                    stack.append(node.right)
-                else:
-                    stack.append(node.left)
-                if node.right is None:
-                    node.right = new_node
-                elif node.left is None:
-                    node.left = new_node
+                    if node.right is None or (node.right.is_leaf() and len(node.right.entries) < self.max_entries):
+                        if node.right is None:
+                            node.right = new_node
+                            node.update_hash()
+                            break
+                        else:
+                            stack.append(node.right)
+                    if node.left is None or (node.left.is_leaf() and len(node.left.entries) < self.max_entries):
+                        if node.left is None:
+                            node.left = new_node
+                            node.update_hash()
+                            break
+                        else:
+                            stack.append(node.left)
 
-    def _adjust_tree(self):
-        if not self.root:
-            return
-
-        stack = [self.root]
-        while stack:
-            node = stack.pop()
-            if node.left or node.right:
-                if node.left:
-                    stack.append(node.left)
-                if node.right:
-                    stack.append(node.right)
-                node.update_hash()
+    def search(self, trans, attr):
+        results = []
+        self._search(trans, attr, results)
+        print(f"M树查询结果: {results}")
+        return results
 
     def get_root_hash(self):
         return self.root.hash_value if self.root else None
 
     def verify_transaction(self, transaction):
         return self._verify_transaction(self.root, transaction.calculate_hash())
+
+    def _search(self, trans, attr, results):
+        # 遍历所有交易
+        for tx in trans:
+            # 检查交易是否满足条件
+            if tx.attribute[3] == attr.attribute[3] and tx.attribute[5] == attr.attribute[5]:
+                # 将满足条件的交易添加到 results 列表中
+                results.append(tx)
 
     def _verify_transaction(self, node, tx_hash):
         if node is None:
