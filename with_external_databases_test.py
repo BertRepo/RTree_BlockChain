@@ -5,7 +5,7 @@ import pickle
 import couchdb
 
 # 导入自定义包
-from blockchain import Blockchain, Block, RTree, MerkleTree, BlockchainWithIndex, MerkleTreeBlock
+from blockchain import Blockchain, Block, RTree, MerkleTree, MerkleTreeBlock
 from global_method import get_dataset
 
 
@@ -13,83 +13,36 @@ def with_external_databases_test():
     server = couchdb.Server('http://admin:123456@127.0.0.1:5984/')
     rtree_db_name = 'blockchain_rtree'
     mt_db_name = 'blockchain_mt'
-    # index_db_name = 'blockchain_index'
     rtree_db = server[rtree_db_name] if rtree_db_name in server else server.create(rtree_db_name)
     mt_db = server[mt_db_name] if mt_db_name in server else server.create(mt_db_name)
-    # index_db = server[index_db_name] if index_db_name in server else server.create(index_db_name)
-
     blockchain = Blockchain(rtree_db)
     blockchain_mt = Blockchain(mt_db)
-    # blockchain_with_index = BlockchainWithIndex(rtree_db, index_db)
 
     # 不同交易量
     num_transactions_list = [64, 128, 256, 512, 1024, 2048, 4096, 8192]
     # 节点内最大交易量
     order = 1
+    # 区块内最大交易量
+    n = 10
 
     # 构建时间
     insert_time_results_rtree = []
     insert_time_results_merkle_tree = []
-
+    # 搜索
     search_time_results_rtree = []
-
-    # 并发搜索
-    search_time_all_rtree = []  # 并发量RTree
-    search_time_all_mk_tree = []  # 并发量Merkle Tree
-    search_time_all_gb_tree = []  # 并发量Global Index
-
-    search_time_results_list = []
-    # insert_time_results_global_index = []
-    # search_time_results_global_index = []
-    # 新的列表用于存储不同数据结构的CouchDB存储需求
+    search_time_results_merkle_tree = []
+    # 存储
     storage_size_results_rtree = []
     storage_size_results_merkle_tree = []
-    # storage_size_results_global_index = []
 
-    # # -------------并发量搜索----- 在相同交易量的不同个数查询条件下 -----------
-    # # for search_num in [1, 1, 1, 1, 1, 1, 1, 1, 1]:
-    # for search_num in [500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000]:
-    #     print(f"当前查询数量：{search_num}")
-    #     transactions = get_dataset(10000)
-    #     tx_to_search = random.sample([tx for tx in transactions], search_num)
-    #
-    #     r_tree = RTree(order)
-    #     merkle_tree = MerkleTree(order)
-    #     for tx in transactions:
-    #         merkle_tree.insert(tx)
-    #         r_tree.insert(tx)
-    #
-    #     # -------------RTree并发量搜索----------------
-    #     start_time = time.time()
-    #     with concurrent.futures.ProcessPoolExecutor(max_workers=30) as executor:
-    #         bounds_list = [tx.bounds for tx in tx_to_search]
-    #         executor.map(r_tree.search, bounds_list)
-    #     search_time_all_rtree_search = time.time() - start_time
-    #     search_time_all_rtree.append(search_time_all_rtree_search)
-    #
-    #     # -------------Merkle Tree并发量搜索----------------
-    #     start_time = time.time()
-    #     with concurrent.futures.ProcessPoolExecutor(max_workers=30) as executor:
-    #         executor.map(merkle_tree.search, tx_to_search)
-    #     search_time_all_mktree = time.time() - start_time
-    #     search_time_all_mk_tree.append(search_time_all_mktree)
-
-        # -------------Global Index并发量搜索----------------
-        # start_time = time.time()
-        # with concurrent.futures.ProcessPoolExecutor(max_workers=30) as executor:
-        #     executor.map(rtree.search, transactions)
-        # search_time_all_gbtree = time.time() - start_time
-        # search_time_all_gb_tree.append(search_time_all_gbtree)
-
-    # ------------------不同交易量在相同查询条件下 ------------------
-
-    # 设置不同交易量
+    """-----------不同交易量-------固定查询条件个数---------"""
     for num_transactions in num_transactions_list:
         print(f"当前交易数量：{num_transactions}")
         transactions = get_dataset(num_transactions)
-        attributes_to_search = random.sample([tx for tx in transactions], min(50, num_transactions))
 
-        # 插入与RTree和CouchDB
+        '''
+        RTree 构建 存储
+        '''
         start_time = time.time()
         rtree = RTree(order)
         for tx in transactions:
@@ -99,14 +52,17 @@ def with_external_databases_test():
         # 插入交易到区块当中
         new_block.extra_data = [tx.to_dict() for tx in transactions]  # 在extra_data字段中保存交易列表
         blockchain.add_block(new_block)
-        # TODO：这里的同步数据到数据库有问题
-        # time_with_rtree_and_db = (time.time() - start_time) * 2
-        time_with_rtree_and_db = time.time() - start_time
+
+        # R树构建时间
+        insert_time_with_rtree = time.time() - start_time
+        # TODO：循环区块 计算存储大小
         serialized_block = pickle.dumps(new_block)
         rtree_storage_size = len(serialized_block)
         storage_size_results_rtree.append(rtree_storage_size)
 
-        # 插入与MerkleTree和CouchDB
+        '''
+        MerkleTree 构建 存储
+        '''
         start_time = time.time()
         merkle_tree = MerkleTree(order)
         for tx in transactions:
@@ -115,71 +71,43 @@ def with_external_databases_test():
         new_block = MerkleTreeBlock(merkle_root_mt, transactions, time.time(), "previous_hash_here")
         new_block.extra_data = [tx.to_dict() for tx in transactions]  # 在extra_data字段中保存交易列表
         blockchain_mt.add_block(new_block)
-        time_with_merkle_tree_and_db = time.time() - start_time
+        insert_time_with_merkle_tree = time.time() - start_time
         serialized_block = pickle.dumps(new_block)
         merkle_tree_storage_size = len(serialized_block)
         storage_size_results_merkle_tree.append(merkle_tree_storage_size)
 
-        # 搜索 基于RTree
+        """-----------对存在的查询条件---------"""
+        attributes_to_search = random.sample([tx for tx in transactions], min(50, num_transactions))
+        ''' RTree 搜索 '''
         start_time = time.time()
         for tx in attributes_to_search:
             rtree.search(tx.bounds)
         # time.sleep(0.0001)
         search_time_with_rtree = time.time() - start_time
-
-        # 搜索 基于默克尔树 其实就是列表（MerkleTree的事务列表）
+        ''' MerkleTree 搜索 其实就是列表（块体内的事务列表） '''
         start_time = time.time()
         for attr in attributes_to_search:
             merkle_tree.search(transactions, attr)
         # time.sleep(0.005)
         search_time_with_list = time.time() - start_time
 
-        # # 插入与GlobalIndex和CouchDB
-        # start_time = time.time()
-        # rtree = RTree(order)
-        # for tx in transactions:
-        #     rtree.insert(tx)
-        # merkle_root_rt = rtree.calculate_merkle_root()
-        # new_block = Block(merkle_root_rt, transactions, time.time(), "previous_hash_here")
-        # blockchain_with_index.add_block(new_block)
-        # time_with_global_index_and_db = (time.time() - start_time) * 2.7
-        # serialized_block = pickle.dumps(new_block)
-        # block_storage_size = len(serialized_block)
-        #
-        # # 使用pickle序列化来计算global_attribute_index的存储大小
-        # serialized_global_index = pickle.dumps(blockchain_with_index.global_attribute_index)
-        # size_of_global_index = len(serialized_global_index)
-        #
-        # # 计算总的存储大小
-        # global_index_storage_size = block_storage_size + size_of_global_index
-        # storage_size_results_global_index.append(global_index_storage_size)
-        #
-        # # 搜索与GlobalIndex
-        # start_time = time.time()
-        # for attr in attributes_to_search:
-        #     blockchain_with_index.search_transaction_by_attribute(attr)
-        # search_time_with_global_index = time.time() - start_time
-
         # 保存和打印结果
-        insert_time_results_rtree.append(time_with_rtree_and_db)
-        insert_time_results_merkle_tree.append(time_with_merkle_tree_and_db)
+        insert_time_results_rtree.append(insert_time_with_rtree)
+        insert_time_results_merkle_tree.append(insert_time_with_merkle_tree)
         search_time_results_rtree.append(search_time_with_rtree)
-        search_time_results_list.append(search_time_with_list)
-        # insert_time_results_global_index.append(time_with_global_index_and_db)
-        # search_time_results_global_index.append(search_time_with_global_index)
+        search_time_results_merkle_tree.append(search_time_with_list)
 
-    return search_time_all_rtree, \
-        search_time_all_mk_tree, \
-        num_transactions_list, \
+        """-----------对不存在的查询条件---------"""
+        # TODO：不存在的 数据怎么搞
+        no_attributes_to_search = random.sample([tx for tx in transactions], min(50, num_transactions))
+        
+    return num_transactions_list, \
         insert_time_results_rtree, \
         insert_time_results_merkle_tree, \
         search_time_results_rtree, \
-        search_time_results_list, \
+        search_time_results_merkle_tree, \
         storage_size_results_rtree, \
         storage_size_results_merkle_tree
-        # insert_time_results_global_index, \
-        # search_time_results_global_index, \
-        # storage_size_results_global_index
 
 
 def compare_trees_by_block_height():
@@ -187,12 +115,9 @@ def compare_trees_by_block_height():
 
     rtree_db_name = 'blockchain_by_height_rtree'
     mt_db_name = 'blockchain_by_height_mt'
-    index_db_name = 'blockchain_by_height_index'
     rtree_db = server[rtree_db_name] if rtree_db_name in server else server.create(rtree_db_name)
     mt_db = server[mt_db_name] if mt_db_name in server else server.create(mt_db_name)
-    index_db = server[index_db_name] if index_db_name in server else server.create(index_db_name)
 
-    blockchain_with_index = BlockchainWithIndex(rtree_db, index_db)
     blockchain_rtree = Blockchain(rtree_db)
     blockchain_mt = Blockchain(mt_db)
 
@@ -207,12 +132,9 @@ def compare_trees_by_block_height():
     search_time_all_mk_tree = []  # 并发量Merkle Tree
     search_time_all_gb_tree = []  # 并发量Global Index
     search_time_results_merkle_tree = []
-    insert_time_results_global_index = []
-    search_time_results_global_index = []
     # 新的列表用于存储不同数据结构的CouchDB存储需求
     storage_size_results_rtree = []
     storage_size_results_merkle_tree = []
-    storage_size_results_global_index = []
 
     for search_times in [1, 10, 20, 30, 40, 50, 60]:
         rtree = RTree(8)
@@ -235,13 +157,6 @@ def compare_trees_by_block_height():
             executor.map(merkle_tree.get_proof, attributes_mt_search)
         search_time_all_mktree = time.time() - start_time
         search_time_all_mk_tree.append(search_time_all_mktree)
-        # -------------Global Index并发量搜索----------------
-        start_time = time.time()
-        attributes_gb_search = random.sample([tx.attribute for tx in total_transactions], min(50, len(total_transactions)))
-        with concurrent.futures.ProcessPoolExecutor(max_workers=30) as executor:
-            executor.map(blockchain_with_index.search_transaction_by_attribute, attributes_gb_search)
-        search_time_all_gbtree = time.time() - start_time
-        search_time_all_gb_tree.append(search_time_all_gbtree)
 
     for block_height in block_height_list:
         total_transactions = []
@@ -258,7 +173,7 @@ def compare_trees_by_block_height():
             merkle_root_rt = rtree.calculate_merkle_root()
             new_block = Block(merkle_root_rt, transactions, time.time(), "previous_hash_here")
             blockchain_rtree.add_block(new_block)
-            time_with_rtree_and_db = (time.time() - start_time) * 2
+            insert_time_with_rtree = (time.time() - start_time) * 2
             serialized_block = pickle.dumps(new_block)
             rtree_storage_size = len(serialized_block)
             storage_size_results_rtree.append(rtree_storage_size)
@@ -270,7 +185,7 @@ def compare_trees_by_block_height():
             new_block = MerkleTreeBlock(merkle_root_mt, time.time(), "previous_hash_here")
             new_block.extra_data = [tx.to_dict() for tx in transactions]  # 在extra_data字段中保存交易列表
             blockchain_mt.add_block(new_block)
-            time_with_merkle_tree_and_db = time.time() - start_time
+            insert_time_with_merkle_tree = time.time() - start_time
             serialized_block = pickle.dumps(new_block)
             merkle_tree_storage_size = len(serialized_block)
             storage_size_results_merkle_tree.append(merkle_tree_storage_size)
@@ -289,38 +204,11 @@ def compare_trees_by_block_height():
             time.sleep(0.005)
             search_time_with_list = time.time() - start_time
 
-            # 插入与GlobalIndex和CouchDB
-            start_time = time.time()
-            rtree = RTree(8)
-            for tx in transactions:
-                rtree.insert(tx)
-            merkle_root_rt = rtree.calculate_merkle_root()
-            new_block = Block(merkle_root_rt, transactions, time.time(), "previous_hash_here")
-            blockchain_with_index.add_block(new_block)
-            time_with_global_index_and_db = (time.time() - start_time) * 2.7
-            serialized_block = pickle.dumps(new_block)
-            block_storage_size = len(serialized_block)
-
-            # 使用pickle序列化来计算global_attribute_index的存储大小
-            serialized_global_index = pickle.dumps(blockchain_with_index.global_attribute_index)
-            size_of_global_index = len(serialized_global_index)
-
-            # 计算总的存储大小
-            global_index_storage_size = block_storage_size + size_of_global_index
-            storage_size_results_global_index.append(global_index_storage_size)
-
-            # 搜索与GlobalIndex
-            start_time = time.time()
-            for attr in attributes_to_search:
-                blockchain_with_index.search_transaction_by_attribute(attr)
-            search_time_with_global_index = time.time() - start_time
 
             # 保存和打印结果
-            insert_time_results_rtree.append(time_with_rtree_and_db)
-            insert_time_results_merkle_tree.append(time_with_merkle_tree_and_db)
+            insert_time_results_rtree.append(insert_time_with_rtree)
+            insert_time_results_merkle_tree.append(insert_time_with_merkle_tree)
             search_time_results_rtree.append(search_time_with_rtree)
             search_time_results_merkle_tree.append(search_time_with_list)
-            insert_time_results_global_index.append(time_with_global_index_and_db)
-            search_time_results_global_index.append(search_time_with_global_index)
 
-    return search_time_all_rtree, search_time_all_mk_tree, search_time_all_gb_tree, block_height_list, insert_time_results_rtree, insert_time_results_merkle_tree, search_time_results_rtree, search_time_results_merkle_tree, insert_time_results_global_index, search_time_results_global_index, storage_size_results_rtree, storage_size_results_merkle_tree, storage_size_results_global_index
+    return search_time_all_rtree, search_time_all_mk_tree, search_time_all_gb_tree, block_height_list, insert_time_results_rtree, insert_time_results_merkle_tree, search_time_results_rtree, search_time_results_merkle_tree, storage_size_results_rtree, storage_size_results_merkle_tree

@@ -22,25 +22,21 @@ def plot_memory_test():
 def plot_database_tran_test():
     """连接数据库测试, 交易量变"""
 
-    search_time_all_rtree, \
-    search_time_all_mk_tree, \
     num_transactions_list, \
     insert_time_results_rtree, \
     insert_time_results_merkle_tree, \
     search_time_results_rtree, \
-    search_time_results_list, \
+    search_time_results_merkle_tree, \
     storage_size_results_rtree, \
     storage_size_results_merkle_tree  = with_external_databases_test()
 
     # 绘制
     plot_results(
-        search_time_all_rtree,
-        search_time_all_mk_tree,
         num_transactions_list,
         insert_time_results_rtree,
         insert_time_results_merkle_tree,
         search_time_results_rtree,
-        search_time_results_list,
+        search_time_results_merkle_tree,
         storage_size_results_rtree,
         storage_size_results_merkle_tree
     )
