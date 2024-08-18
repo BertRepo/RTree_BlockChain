@@ -2,9 +2,6 @@ import hashlib
 import json
 import numpy as np
 from datetime import datetime
-from collections import deque, defaultdict
-from couchdb.http import ResourceConflict, ResourceNotFound
-
 
 def convert_ndarray_to_list(obj):
     if isinstance(obj, np.ndarray):
@@ -15,16 +12,38 @@ def convert_ndarray_to_list(obj):
         return {k: convert_ndarray_to_list(v) for k, v in obj.items()}
     elif isinstance(obj, list):
         return [convert_ndarray_to_list(i) for i in obj]
+    elif isinstance(obj, RTree):
+        return obj.to_dict()
+    elif isinstance(obj, MerkleTree):
+        return obj.to_dict()
     else:
         return obj
 
+# 定义 RTree 的自定义序列化函数
+def serialize_rtree(obj):
+    if isinstance(obj, RTree):
+        return obj.to_dict()
+    elif isinstance(obj, RTreeNode):
+        return obj.to_dict()
+    elif isinstance(obj, Transaction):
+        return obj.to_dict()
+    raise TypeError(f"Type {type(obj)} not serializable")
+
+def serialize_merkle_tree(obj):
+    if isinstance(obj, MerkleTree):
+        return obj.to_dict()
+    elif isinstance(obj, MerkleNode):
+        return obj.to_dict()
+    elif isinstance(obj, Transaction):
+        return obj.to_dict()
+    raise TypeError(f"Type {type(obj)} not serializable")
 
 '''
     R树和默克尔树共用部分 交易类 和 区块链类
 '''
 # 交易类  R树和默克尔树对应的区块共用这个类 TODO: 后面考虑分开实现 因为其中包含边界值
 class Transaction:
-    def __init__(self, tx_hash, attribute, bounds):
+    def __init__(self, tx_hash, attribute, bounds=None):
         self.tx_hash = tx_hash
         self.attribute = attribute  # 用作索引的属性
         self.bounds = bounds  # 用于 R 树插入的边界
@@ -57,7 +76,7 @@ class Blockchain:
         self.db = db
         self.max_transactions = max_transactions
         self.current_transactions = []
-        self._load_chain_from_db()
+        # self._load_chain_from_db()
 
     def _load_chain_from_db(self):
         for id in self.db:
@@ -69,12 +88,12 @@ class Blockchain:
             # TODO: 这个判断 屎山代码 后面有空最好修改下 没有必要判断每个区块类型（同区块类型都是放在同一个数据库中的）
             if block_type == 'RTreeBlock':
                 
-                block = Block(r_tree_root=doc['r_tree_root'], transactions=transactions,
+                block = Block(r_tree_root=doc['r_tree_root'], tree=doc['tree'], transactions=transactions,
                               timestamp=doc['timestamp'], prev_hash=doc['prev_hash'],
                               max_transactions=self.max_transactions)
             elif block_type == 'MerkleTreeBlock':
                 
-                block = MerkleTreeBlock(merkle_root=doc['merkle_root'], transactions=transactions,
+                block = MerkleTreeBlock(merkle_root=doc['merkle_root'], tree=doc['tree'], transactions=transactions,
                                         timestamp=doc['timestamp'], prev_hash=doc['prev_hash'],
                                         max_transactions=self.max_transactions)
 
@@ -116,20 +135,22 @@ class Blockchain:
         if isinstance(block, Block):
             self.db.save({
                 'type': 'RTreeBlock',
-                'transactions': transactions_dict,
                 'r_tree_root': block.r_tree_root,
                 'timestamp': block.timestamp,
                 'prev_hash': block.prev_hash,
-                # 'extra_data': block.extra_data
+                'tree': json.dumps(block.tree, default=serialize_rtree) if isinstance(block.tree, RTree) else block.tree,
+                'transactions': transactions_dict,
+                'extra_data': block.extra_data
             })
         elif isinstance(block, MerkleTreeBlock):
             self.db.save({
                 'type': 'MerkleTreeBlock',
-                'transactions': transactions_dict,
                 'merkle_root': block.merkle_root,
                 'timestamp': block.timestamp,
                 'prev_hash': block.prev_hash,
-                # 'extra_data': block.extra_data
+                'tree': json.dumps(block.tree, default=serialize_merkle_tree) if isinstance(block.tree, MerkleTree) else block.tree,
+                'transactions': transactions_dict,
+                'extra_data': block.extra_data
             })
         else:
             print("Unsupported block type")
@@ -169,6 +190,20 @@ class RTreeNode:
         else:
             self.bounds = None  # 没有条目时设置边界为空
 
+    def to_dict(self):
+        return {
+            'is_leaf': self.is_leaf,
+            'entries': [(entry[0], entry[1]) for entry in self.entries],
+            'bounds': self.bounds
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        node = cls(is_leaf=data['is_leaf'])
+        node.entries = [(entry[0], entry[1]) for entry in data['entries']]
+        node.bounds = data['bounds']
+        return node
+
 
 # R 树类
 class RTree:
@@ -204,39 +239,13 @@ class RTree:
             best_child = min(node.entries, key=lambda child: self._calc_enlargement(child[0].bounds, entry[1]))
             return self._choose_leaf(best_child[0], entry)
 
-    # 二分分裂策略
-    def _split_node(self, node):
-        mid = len(node.entries) // 2
-        new_node = RTreeNode(is_leaf=node.is_leaf)
-        node.entries, new_node.entries = node.entries[:mid], node.entries[mid:]
-        node.update_bounds()
-        new_node.update_bounds()
-
-        if node == self.root:
-            new_root = RTreeNode(is_leaf=False)
-            new_root.entries.append((self.root, self.root.bounds))
-            new_root.entries.append((new_node, new_node.bounds))
-            new_root.update_bounds()
-            self.root = new_root
-        else:
-            parent = self._find_parent(self.root, node)
-            parent.entries.append((new_node, new_node.bounds))
-            parent.update_bounds()
-            if len(parent.entries) > self.max_entries:
-                self._split_node(parent)
-
-    # # 排序分裂策略
+    # # 二分分裂策略
     # def _split_node(self, node):
     #     mid = len(node.entries) // 2
     #     new_node = RTreeNode(is_leaf=node.is_leaf)
-    #
-    #     sorted_entries = sorted(node.entries, key=lambda entry: entry[1])
-    #     node.entries, new_node.entries = sorted_entries[:mid], sorted_entries[mid:]
-    #
+    #     node.entries, new_node.entries = node.entries[:mid], node.entries[mid:]
     #     node.update_bounds()
     #     new_node.update_bounds()
-    #
-    #     # print(f"分裂后的节点边界：\n  当前节点：{node.bounds}\n  新节点：{new_node.bounds}")
     #
     #     if node == self.root:
     #         new_root = RTreeNode(is_leaf=False)
@@ -250,6 +259,32 @@ class RTree:
     #         parent.update_bounds()
     #         if len(parent.entries) > self.max_entries:
     #             self._split_node(parent)
+
+    # 排序分裂策略
+    def _split_node(self, node):
+        mid = len(node.entries) // 2
+        new_node = RTreeNode(is_leaf=node.is_leaf)
+
+        sorted_entries = sorted(node.entries, key=lambda entry: entry[1])
+        node.entries, new_node.entries = sorted_entries[:mid], sorted_entries[mid:]
+
+        node.update_bounds()
+        new_node.update_bounds()
+
+        # print(f"分裂后的节点边界：\n  当前节点：{node.bounds}\n  新节点：{new_node.bounds}")
+
+        if node == self.root:
+            new_root = RTreeNode(is_leaf=False)
+            new_root.entries.append((self.root, self.root.bounds))
+            new_root.entries.append((new_node, new_node.bounds))
+            new_root.update_bounds()
+            self.root = new_root
+        else:
+            parent = self._find_parent(self.root, node)
+            parent.entries.append((new_node, new_node.bounds))
+            parent.update_bounds()
+            if len(parent.entries) > self.max_entries:
+                self._split_node(parent)
 
     def _find_parent(self, current_node, target_node):
         if current_node.is_leaf or current_node == target_node:
@@ -296,15 +331,32 @@ class RTree:
             parent.update_bounds()
             node = parent
 
+    def to_dict(self):
+        return {
+            'root': self.root.to_dict(),
+            'max_entries': self.max_entries
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        tree = cls(max_entries=data['max_entries'])
+        tree.root = RTreeNode.from_dict(data['root'])
+        return tree
+
 # R树区块链中的一个区块，包含RTree的根哈希、交易、时间戳和前一个区块的哈希
 class Block:
-    def __init__(self, r_tree_root, transactions, timestamp, prev_hash, max_transactions=8):
+    def __init__(self, r_tree_root, r_tree, transactions, timestamp, prev_hash, max_transactions=8, extra_data=None):
+        # 块头
         self.r_tree_root = r_tree_root
-        self.transactions = transactions  # 只存储交易或交易的哈希
         self.timestamp = timestamp
         self.prev_hash = prev_hash
-        self.extra_data = None
+        self.extra_data = extra_data # 可以用来存储mbr
+
+        # 块体
+        self.tree = r_tree
+        self.transactions = transactions  # 只存储交易或交易的哈希
         self.max_transactions = max_transactions  # 最大交易数量
+
 
     # 计算区块的哈希值
     def calculate_hash(self):
@@ -467,6 +519,21 @@ class MerkleNode:
     def is_leaf(self):
         return not self.left and not self.right
 
+    def to_dict(self):
+        return {
+            'hash_value': self.hash_value,
+            'left': self.left.to_dict() if self.left else None,
+            'right': self.right.to_dict() if self.right else None,
+            'entries': [entry.to_dict() for entry in self.entries] if self.entries else []
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        left_node = MerkleNode.from_dict(data['left']) if data['left'] else None
+        right_node = MerkleNode.from_dict(data['right']) if data['right'] else None
+        node = cls(hash_value=data['hash_value'], left=left_node, right=right_node, entries=data['entries'])
+        return node
+
 class MerkleTree:
     def __init__(self, max_entries=4):
         self.root = None
@@ -534,18 +601,33 @@ class MerkleTree:
             return True
         return self._verify_transaction(node.left, tx_hash) or self._verify_transaction(node.right, tx_hash)
 
+    def to_dict(self):
+        return {
+            'root': self.root.to_dict() if self.root else None,
+            'max_entries': self.max_entries
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        tree = cls(max_entries=data['max_entries'])
+        tree.root = MerkleNode.from_dict(data['root'])
+        return tree
 
 # 默克尔树区块链中的一个区块
 class MerkleTreeBlock:
     # def __init__(self, merkle_root, *args, **kwargs):
     #     super().__init__(*args, **kwargs)
     #     self.merkle_root = merkle_root
-    def __init__(self, merkle_root, transactions, timestamp, prev_hash, max_transactions=8):
-        self.merkle_root = merkle_root  # Merkle Tree
-        self.transactions = transactions
+    def __init__(self, merkle_root, merkle_tree, transactions, timestamp, prev_hash, max_transactions=8):
+        # 块头
+        self.merkle_root = merkle_root  # Merkle Tree根哈希
         self.timestamp = timestamp  # 区块的时间戳
         self.prev_hash = prev_hash  # 前一个区块的哈希
         self.extra_data = None  # 用于存储额外数据
+
+        # 块体
+        self.tree = merkle_tree
+        self.transactions = transactions
         self.max_transactions = max_transactions  # 最大交易数量
 
     # 存储额外数据

@@ -21,24 +21,35 @@ def plot_memory_test():
 # 不同交易量下测试
 def plot_database_tran_test():
     """连接数据库测试, 交易量变"""
-
     num_transactions_list, \
     insert_time_results_rtree, \
+    insert_time_results_rtree_mbr, \
     insert_time_results_merkle_tree, \
-    search_time_results_rtree, \
-    search_time_results_merkle_tree, \
     storage_size_results_rtree, \
-    storage_size_results_merkle_tree  = with_external_databases_test()
+    storage_size_results_rtree_mbr, \
+    storage_size_results_merkle_tree, \
+    search_time_results_rtree, \
+    search_time_results_rtree_mbr, \
+    search_time_results_merkle_tree, \
+    search_no_time_results_rtree, \
+    search_no_time_results_rtree_mbr, \
+    search_no_time_results_merkle_tree  = with_external_databases_test()
 
     # 绘制
     plot_results(
         num_transactions_list,
         insert_time_results_rtree,
+        insert_time_results_rtree_mbr,
         insert_time_results_merkle_tree,
-        search_time_results_rtree,
-        search_time_results_merkle_tree,
         storage_size_results_rtree,
-        storage_size_results_merkle_tree
+        storage_size_results_rtree_mbr,
+        storage_size_results_merkle_tree,
+        search_time_results_rtree,
+        search_time_results_rtree_mbr,
+        search_time_results_merkle_tree,
+        search_no_time_results_rtree,
+        search_no_time_results_rtree_mbr,
+        search_no_time_results_merkle_tree
     )
 
 
