@@ -27,6 +27,11 @@ def serialize_rtree(obj):
         return obj.to_dict()
     elif isinstance(obj, Transaction):
         return obj.to_dict()
+    # elif isinstance(obj, pd.Timestamp):
+    #     return obj.isoformat()  # 将时间戳转换为 ISO 8601 格式字符串
+    # elif pd.isna(obj):  # 检查是否为 NaT 或其他缺失值
+    #     return None  # 将 NaT 或 NaN 转换为 None
+    # # 处理其他类型的 RTree 对象的序列化
     raise TypeError(f"Type {type(obj)} not serializable")
 
 def serialize_merkle_tree(obj):
@@ -36,6 +41,10 @@ def serialize_merkle_tree(obj):
         return obj.to_dict()
     elif isinstance(obj, Transaction):
         return obj.to_dict()
+    # elif isinstance(obj, pd.Timestamp):
+    #     return obj.isoformat()  # 将时间戳转换为 ISO 8601 格式字符串
+    # elif pd.isna(obj):  # 检查是否为 NaT 或其他缺失值
+    #     return None  # 将 NaT 或 NaN 转换为 None
     raise TypeError(f"Type {type(obj)} not serializable")
 
 '''
@@ -96,7 +105,6 @@ class Blockchain:
                 block = MerkleTreeBlock(merkle_root=doc['merkle_root'], tree=doc['tree'], transactions=transactions,
                                         timestamp=doc['timestamp'], prev_hash=doc['prev_hash'],
                                         max_transactions=self.max_transactions)
-
             else:
                 print(f"Warning: Unknown block type for block id {id}. Skipping.")
                 continue
@@ -270,8 +278,6 @@ class RTree:
 
         node.update_bounds()
         new_node.update_bounds()
-
-        # print(f"分裂后的节点边界：\n  当前节点：{node.bounds}\n  新节点：{new_node.bounds}")
 
         if node == self.root:
             new_root = RTreeNode(is_leaf=False)
@@ -574,9 +580,9 @@ class MerkleTree:
                         else:
                             stack.append(node.left)
 
-    def search(self, trans, attr):
+    def search(self, trans, attr, d):
         results = []
-        self._search(trans, attr, results)
+        self._search(trans, attr, results, d)
         print(f"M树查询结果: {results}")
         return results
 
@@ -586,13 +592,19 @@ class MerkleTree:
     def verify_transaction(self, transaction):
         return self._verify_transaction(self.root, transaction.calculate_hash())
 
-    def _search(self, trans, attr, results):
+    def _search(self, trans, attr, results, d):
         # 遍历所有交易
         for tx in trans:
-            # 检查交易是否满足条件
-            if tx.attribute[3] == attr.attribute[3] and tx.attribute[5] == attr.attribute[5]:
-                # 将满足条件的交易添加到 results 列表中
-                results.append(tx)
+            # 如果 attribute 是字典，使用键访问
+            if isinstance(tx.attribute, dict) and isinstance(attr.attribute, dict):
+                if all(tx.attribute[attr_name] == attr.attribute[attr_name] for attr_name in attr.attribute.keys()):
+                    results.append(tx)
+            # 如果 attribute 是列表，使用索引访问
+            elif isinstance(tx.attribute, list) and isinstance(attr.attribute, list):
+                if all(tx.attribute[i] == attr.attribute[i] for i in range(d)):
+                    results.append(tx)
+            else:
+                print("tx.attribute 和 attr.attribute 的结构不匹配")
 
     def _verify_transaction(self, node, tx_hash):
         if node is None:
