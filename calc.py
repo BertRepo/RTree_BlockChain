@@ -67,10 +67,18 @@ def calc_every_n():
             rtree_db_name = 'blockchain_rtree_{}_{}'.format(d, n)
             rtree_mbr_db_name = 'blockchain_rtree_mbr_{}_{}'.format(d, n)
             mt_db_name = 'blockchain_mt_{}_{}'.format(d, n)
-            rtree_db = server[rtree_db_name] if rtree_db_name in server else server.create(rtree_db_name)
-            rtree_mbr_db = server[rtree_mbr_db_name] if rtree_mbr_db_name in server else server.create(
-                rtree_mbr_db_name)
-            mt_db = server[mt_db_name] if mt_db_name in server else server.create(mt_db_name)
+
+            # 函数用于检查并删除数据库，如果存在的话
+            def delete_and_create_db(db_name):
+                if db_name in server:
+                    server.delete(db_name)
+                return server.create(db_name)
+
+            # 删除并创建新数据库
+            rtree_db = delete_and_create_db(rtree_db_name)
+            rtree_mbr_db = delete_and_create_db(rtree_mbr_db_name)
+            mt_db = delete_and_create_db(mt_db_name)
+            # 创建区块链对象
             blockchain_r = Blockchain(rtree_db)
             blockchain_mbr = Blockchain(rtree_mbr_db)
             blockchain_mt = Blockchain(mt_db)
@@ -310,9 +318,18 @@ def calc_every_d():
             rtree_db_name = 'blockchain_rtree_{}_{}'.format(n, d)
             rtree_mbr_db_name = 'blockchain_rtree_mbr_{}_{}'.format(n, d)
             mt_db_name = 'blockchain_mt_{}_{}'.format(n, d)
-            rtree_db = server[rtree_db_name] if rtree_db_name in server else server.create(rtree_db_name)
-            rtree_mbr_db = server[rtree_mbr_db_name] if rtree_mbr_db_name in server else server.create(rtree_mbr_db_name)
-            mt_db = server[mt_db_name] if mt_db_name in server else server.create(mt_db_name)
+
+            # 函数用于检查并删除数据库，如果存在的话
+            def delete_and_create_db(db_name):
+                if db_name in server:
+                    server.delete(db_name)
+                return server.create(db_name)
+
+            # 删除并创建新数据库
+            rtree_db = delete_and_create_db(rtree_db_name)
+            rtree_mbr_db = delete_and_create_db(rtree_mbr_db_name)
+            mt_db = delete_and_create_db(mt_db_name)
+            # 创建区块链对象
             blockchain_r = Blockchain(rtree_db)
             blockchain_mbr = Blockchain(rtree_mbr_db)
             blockchain_mt = Blockchain(mt_db)
@@ -501,12 +518,23 @@ x轴不同总交易量 三张图分别对应不同查询个数
 '''
 def calc_every_t():
     server = couchdb.Server('http://admin:123456@127.0.0.1:5984/')
+    # 数据库名称
     rtree_db_name = 'blockchain_rtree'
     rtree_mbr_db_name = 'blockchain_rtree_mbr'
     mt_db_name = 'blockchain_mt'
-    rtree_db = server[rtree_db_name] if rtree_db_name in server else server.create(rtree_db_name)
-    rtree_mbr_db = server[rtree_mbr_db_name] if rtree_mbr_db_name in server else server.create(rtree_mbr_db_name)
-    mt_db = server[mt_db_name] if mt_db_name in server else server.create(mt_db_name)
+
+    # 函数用于检查并删除数据库，如果存在的话
+    def delete_and_create_db(db_name):
+        if db_name in server:
+            server.delete(db_name)
+        return server.create(db_name)
+
+    # 删除并创建新数据库
+    rtree_db = delete_and_create_db(rtree_db_name)
+    rtree_mbr_db = delete_and_create_db(rtree_mbr_db_name)
+    mt_db = delete_and_create_db(mt_db_name)
+
+    # 创建区块链对象
     blockchain = Blockchain(rtree_db)
     blockchain_mbr = Blockchain(rtree_mbr_db)
     blockchain_mt = Blockchain(mt_db)
