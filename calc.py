@@ -1,4 +1,5 @@
 import time
+import json
 import random
 import pickle
 import couchdb
@@ -10,6 +11,48 @@ from data import get_dataset, get_random_nonexistent_data, measure_insert_time_r
 
 def intersects(mbr1, mbr2):
     return all(mbr1[i] <= mbr2[i + len(mbr1) // 2] and mbr2[i] <= mbr1[i + len(mbr1) // 2] for i in range(len(mbr1) // 2))
+
+def save_experiment_results(
+    d_list,
+    n_list,
+    insert_time_rtree,
+    insert_time_rtree_mbr,
+    insert_time_merkle_tree,
+    storage_size_rtree,
+    storage_size_rtree_mbr,
+    storage_size_merkle_tree,
+    search_time_rtree,
+    search_time_rtree_mbr,
+    search_time_merkle_tree,
+    search_no_time_rtree,
+    search_no_time_rtree_mbr,
+    search_no_time_merkle_tree,
+    file_path="experiment_results.json"
+):
+    # 构建一个字典存储所有结果
+    results = {
+        "d_list": d_list,
+        "n_list": n_list,
+        "insert_time_rtree": insert_time_rtree,
+        "insert_time_rtree_mbr": insert_time_rtree_mbr,
+        "insert_time_merkle_tree": insert_time_merkle_tree,
+        "storage_size_rtree": storage_size_rtree,
+        "storage_size_rtree_mbr": storage_size_rtree_mbr,
+        "storage_size_merkle_tree": storage_size_merkle_tree,
+        "search_time_rtree": search_time_rtree,
+        "search_time_rtree_mbr": search_time_rtree_mbr,
+        "search_time_merkle_tree": search_time_merkle_tree,
+        "search_no_time_rtree": search_no_time_rtree,
+        "search_no_time_rtree_mbr": search_no_time_rtree_mbr,
+        "search_no_time_merkle_tree": search_no_time_merkle_tree
+    }
+
+    # 将字典保存为 JSON 文件
+    with open(file_path, 'w') as f:
+        json.dump(results, f, indent=4)
+
+    print(f"实验结果已保存到 {file_path}")
+
 
 '''
 x轴不同交易量 三张图分别对应不同属性个数
@@ -245,6 +288,25 @@ def calc_every_n():
         storage_size_rtree[d] = storage_size_results_rtree
         storage_size_rtree_mbr[d] = storage_size_results_rtree_mbr
         storage_size_merkle_tree[d] = storage_size_results_merkle_tree
+
+    # 在实验结束后调用函数保存结果
+    save_experiment_results(
+        d_list,
+        n_list,
+        insert_time_rtree,
+        insert_time_rtree_mbr,
+        insert_time_merkle_tree,
+        storage_size_rtree,
+        storage_size_rtree_mbr,
+        storage_size_merkle_tree,
+        search_time_rtree,
+        search_time_rtree_mbr,
+        search_time_merkle_tree,
+        search_no_time_rtree,
+        search_no_time_rtree_mbr,
+        search_no_time_merkle_tree,
+        'every_n_results.json'
+    )
 
     return d_list, \
         n_list, \
@@ -496,6 +558,25 @@ def calc_every_d():
         storage_size_rtree[n] = storage_size_results_rtree
         storage_size_rtree_mbr[n] = storage_size_results_rtree_mbr
         storage_size_merkle_tree[n] = storage_size_results_merkle_tree
+
+    # 在实验结束后调用函数保存结果
+    save_experiment_results(
+        d_list,
+        n_list,
+        insert_time_rtree,
+        insert_time_rtree_mbr,
+        insert_time_merkle_tree,
+        storage_size_rtree,
+        storage_size_rtree_mbr,
+        storage_size_merkle_tree,
+        search_time_rtree,
+        search_time_rtree_mbr,
+        search_time_merkle_tree,
+        search_no_time_rtree,
+        search_no_time_rtree_mbr,
+        search_no_time_merkle_tree,
+        'every_d_results.json'
+    )
 
     return d_list, \
            n_list, \
