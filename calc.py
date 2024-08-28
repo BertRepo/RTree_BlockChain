@@ -305,7 +305,7 @@ def calc_every_n():
         search_no_time_rtree,
         search_no_time_rtree_mbr,
         search_no_time_merkle_tree,
-        'every_n_results.json'
+        'output/every_n_results.json'
     )
 
     return d_list, \
@@ -575,7 +575,7 @@ def calc_every_d():
         search_no_time_rtree,
         search_no_time_rtree_mbr,
         search_no_time_merkle_tree,
-        'every_d_results.json'
+        'output/every_d_results.json'
     )
 
     return d_list, \

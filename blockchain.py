@@ -233,7 +233,7 @@ class RTree:
     def search(self, bounds):
         results = []
         self._search(self.root, bounds, results)
-        print(f"R树查询结果: {results}")
+        # print(f"R树查询结果: {results}")
         return results
 
     def calculate_merkle_root(self):
@@ -583,7 +583,7 @@ class MerkleTree:
     def search(self, trans, attr, d):
         results = []
         self._search(trans, attr, results, d)
-        print(f"M树查询结果: {results}")
+        # print(f"M树查询结果: {results}")
         return results
 
     def get_root_hash(self):
