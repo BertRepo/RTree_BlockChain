@@ -129,10 +129,12 @@ if __name__ == '__main__':
     # run_tree_self()
 
     # 不同区块交易量下
-    run_every_n()
+    # run_every_n()
 
     # 不同属性个数下
-    run_every_d()
+    # run_every_d()
 
     # 不同总体交易量下
     # run_every_t()
+
+    print(123)

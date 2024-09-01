@@ -1,3 +1,4 @@
+import json
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
 from matplotlib.ticker import MultipleLocator, FormatStrFormatter, LogLocator, LogFormatter
@@ -42,8 +43,7 @@ def plot_every_n(
     """绘制不同区块交易量下对比图"""
 
     # 绘制构建时间的比较
-    fig, axs = plt.subplots(1, 3, figsize=(18, 6))
-    # 遍历 d_list，绘制每个 d 值下三种树的构建时间对比
+    fig, axs = plt.subplots(1, len(d_list), figsize=(18, 6))
     for i, d in enumerate(d_list):
         axs[i].plot(n_list, insert_time_rtree[d], label='R-tree', marker='o')
         axs[i].plot(n_list, insert_time_rtree_mbr[d], label='MR-tree', marker='v')
@@ -52,16 +52,12 @@ def plot_every_n(
         axs[i].set_xlabel('区块内交易数量(个)')
         axs[i].set_ylabel('时间(s)')
         axs[i].legend()
-    # 设置整体标题
     fig.suptitle('不同区块交易量下的构建时耗结果图', fontsize=16)
-    # 保存图像为 PDF
     plt.savefig('insert_times_comparison_n.pdf', format='pdf')
-    # 显示图像
     plt.show()
 
     # 绘制存储容量的比较
-    fig, axs = plt.subplots(1, 3, figsize=(18, 6))
-    # 遍历 d_list，绘制每个 d 值下三种树的存储容量对比
+    fig, axs = plt.subplots(1, len(d_list), figsize=(18, 6))
     for i, d in enumerate(d_list):
         axs[i].plot(n_list, storage_size_rtree[d], label='R-tree', marker='o')
         axs[i].plot(n_list, storage_size_rtree_mbr[d], label='MR-tree', marker='v')
@@ -70,16 +66,12 @@ def plot_every_n(
         axs[i].set_xlabel('区块内交易数量(个)')
         axs[i].set_ylabel('大小(bytes)')
         axs[i].legend()
-    # 设置整体标题
     fig.suptitle('不同区块交易量下的存储开销结果图', fontsize=16)
-    # 保存图像为 PDF
     plt.savefig('storage_size_comparison_n.pdf', format='pdf')
-    # 显示图像
     plt.show()
 
     # 存在条件查询时间比较
-    fig, axs = plt.subplots(1, 3, figsize=(18, 6))
-    # 遍历 d_list，绘制每个 d 值下三种树的查询时间对比
+    fig, axs = plt.subplots(1, len(d_list), figsize=(18, 6))
     for i, d in enumerate(d_list):
         axs[i].plot(n_list, search_time_rtree[d], label='R-tree', marker='o')
         axs[i].plot(n_list, search_time_rtree_mbr[d], label='MR-tree', marker='v')
@@ -91,16 +83,12 @@ def plot_every_n(
         axs[i].set_yscale('log')
         axs[i].yaxis.set_major_locator(LogLocator(base=10.0, numticks=10))
         axs[i].yaxis.set_major_formatter(LogFormatter(base=10.0, labelOnlyBase=False))
-    # 设置整体标题
     fig.suptitle('不同区块交易量下的存在条件查询时耗结果图', fontsize=16)
-    # 保存图像为 PDF
     plt.savefig('search_time_comparison_n.pdf', format='pdf')
-    # 显示图像
     plt.show()
 
     # 不存在条件查询时间比较
-    fig, axs = plt.subplots(1, 3, figsize=(18, 6))
-    # 遍历 d_list，绘制每个 d 值下三种树的查询时间对比
+    fig, axs = plt.subplots(1, len(d_list), figsize=(18, 6))
     for i, d in enumerate(d_list):
         axs[i].plot(n_list, search_no_time_rtree[d], label='R-tree', marker='o')
         axs[i].plot(n_list, search_no_time_rtree_mbr[d], label='MR-tree', marker='v')
@@ -112,12 +100,10 @@ def plot_every_n(
         axs[i].set_yscale('log')
         axs[i].yaxis.set_major_locator(LogLocator(base=10.0, numticks=10))
         axs[i].yaxis.set_major_formatter(LogFormatter(base=10.0, labelOnlyBase=False))
-    # 设置整体标题
     fig.suptitle('不同区块交易量下的不存在条件查询时耗结果图', fontsize=16)
-    # 保存图像为 PDF
     plt.savefig('search_no_time_comparison_n.pdf', format='pdf')
-    # 显示图像
     plt.show()
+
 
 
 def plot_every_d(
@@ -138,7 +124,7 @@ def plot_every_d(
     """绘制不同属性个数下对比图"""
 
     # 绘制构建时间的比较
-    fig, axs = plt.subplots(1, 3, figsize=(18, 6))
+    fig, axs = plt.subplots(1, len(n_list), figsize=(18, 6))
     for i, n in enumerate(n_list):
         axs[i].plot(d_list, insert_time_rtree[n], label='R-tree', marker='o')
         axs[i].plot(d_list, insert_time_rtree_mbr[n], label='MR-tree', marker='v')
@@ -152,7 +138,7 @@ def plot_every_d(
     plt.show()
 
     # 绘制存储容量的比较
-    fig, axs = plt.subplots(1, 3, figsize=(18, 6))
+    fig, axs = plt.subplots(1, len(n_list), figsize=(18, 6))
     for i, n in enumerate(n_list):
         axs[i].plot(d_list, storage_size_rtree[n], label='R-tree', marker='o')
         axs[i].plot(d_list, storage_size_rtree_mbr[n], label='MR-tree', marker='v')
@@ -166,7 +152,7 @@ def plot_every_d(
     plt.show()
 
     # 存在条件下搜索时间的比较
-    fig, axs = plt.subplots(1, 3, figsize=(18, 6))
+    fig, axs = plt.subplots(1, len(n_list), figsize=(18, 6))
     for i, n in enumerate(n_list):
         axs[i].plot(d_list, search_time_rtree[n], label='R-tree', marker='o')
         axs[i].plot(d_list, search_time_rtree_mbr[n], label='MR-tree', marker='v')
@@ -181,7 +167,7 @@ def plot_every_d(
     plt.show()
 
     # 不存在条件下搜索时间的比较
-    fig, axs = plt.subplots(1, 3, figsize=(18, 6))
+    fig, axs = plt.subplots(1, len(n_list), figsize=(18, 6))
     for i, n in enumerate(n_list):
         axs[i].plot(d_list, search_no_time_rtree[n], label='R-tree', marker='o')
         axs[i].plot(d_list, search_no_time_rtree_mbr[n], label='MR-tree', marker='v')
@@ -194,6 +180,7 @@ def plot_every_d(
     fig.suptitle('不同属性数量下的不存在条件查询时耗结果图', fontsize=16)
     plt.savefig('search_no_time_comparison_d.pdf', format='pdf')
     plt.show()
+
 
 
 
@@ -323,3 +310,57 @@ def plot_tree_self(num_transactions, insert_time_results_r_tree, insert_time_res
     # 设置导出的文件名和格式为PDF
     plt.savefig('search_time_comparison.pdf', format='pdf')
     plt.show()
+
+
+def load_experiment_results(file_path):
+    """读取保存的实验结果 JSON 文件"""
+    with open(file_path, 'r') as f:
+        results = json.load(f)
+    return results
+
+
+def plot_from_saved_data(file_path, plot_type='n'):
+    """从保存的数据文件中读取并绘制图表"""
+    results = load_experiment_results(file_path)
+
+    if plot_type == 'n':
+        plot_every_n(
+            results['d_list'],
+            results['n_list'],
+            results['insert_time_rtree'],
+            results['insert_time_rtree_mbr'],
+            results['insert_time_merkle_tree'],
+            results['storage_size_rtree'],
+            results['storage_size_rtree_mbr'],
+            results['storage_size_merkle_tree'],
+            results['search_time_rtree'],
+            results['search_time_rtree_mbr'],
+            results['search_time_merkle_tree'],
+            results['search_no_time_rtree'],
+            results['search_no_time_rtree_mbr'],
+            results['search_no_time_merkle_tree']
+        )
+    elif plot_type == 'd':
+        plot_every_d(
+            results['d_list'],
+            results['n_list'],
+            results['insert_time_rtree'],
+            results['insert_time_rtree_mbr'],
+            results['insert_time_merkle_tree'],
+            results['storage_size_rtree'],
+            results['storage_size_rtree_mbr'],
+            results['storage_size_merkle_tree'],
+            results['search_time_rtree'],
+            results['search_time_rtree_mbr'],
+            results['search_time_merkle_tree'],
+            results['search_no_time_rtree'],
+            results['search_no_time_rtree_mbr'],
+            results['search_no_time_merkle_tree']
+        )
+    else:
+        print("Invalid plot type. Please use 'n' or 'd'.")
+
+
+# 调用函数绘制图表
+# plot_from_saved_data('output/every_n_results.json', plot_type='n')
+# plot_from_saved_data('output/every_d_results.json', plot_type='d')

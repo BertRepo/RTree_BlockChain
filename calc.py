@@ -289,9 +289,11 @@ def calc_every_n():
         storage_size_rtree_mbr[d] = storage_size_results_rtree_mbr
         storage_size_merkle_tree[d] = storage_size_results_merkle_tree
 
+    d_list_str = [str(d) for d in d_list]
+
     # 在实验结束后调用函数保存结果
     save_experiment_results(
-        d_list,
+        d_list_str,
         n_list,
         insert_time_rtree,
         insert_time_rtree_mbr,
@@ -559,10 +561,11 @@ def calc_every_d():
         storage_size_rtree_mbr[n] = storage_size_results_rtree_mbr
         storage_size_merkle_tree[n] = storage_size_results_merkle_tree
 
+    n_list_str = [str(n) for n in n_list]
     # 在实验结束后调用函数保存结果
     save_experiment_results(
         d_list,
-        n_list,
+        n_list_str,
         insert_time_rtree,
         insert_time_rtree_mbr,
         insert_time_merkle_tree,
@@ -861,3 +864,10 @@ def calc_tree_self():
         print("M树查询",search_time_results_mt)
 
     return num_transactions, insert_time_results_r_tree, insert_time_results_mt, search_time_results_r_tree, search_time_results_mt
+
+
+'''
+针对几种溯源方案的 构建 溯源 的测试
+'''
+def calc_trace_self():
+    print(111)
