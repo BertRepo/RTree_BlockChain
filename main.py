@@ -1,5 +1,5 @@
-from plot import plot_tree_self, plot_every_n, plot_every_d, plot_every_t
-from calc import calc_tree_self, calc_every_n, calc_every_d, calc_every_t
+from plot import plot_tree_self, plot_every_n, plot_every_d, plot_every_t, plot_trace_every_n
+from calc import calc_tree_self, calc_every_n, calc_every_d, calc_every_t, calc_trace_every_n
 
 
 def run_tree_self():
@@ -124,6 +124,36 @@ def run_every_t():
     )
 
 
+def run_trace_every_n():
+    """ 溯源 不同区块交易量下测试"""
+    d_list, \
+    n_list, \
+    insert_time_rtree, \
+    insert_time_rtree_mbr, \
+    insert_time_merkle_tree, \
+    storage_size_rtree, \
+    storage_size_rtree_mbr, \
+    storage_size_merkle_tree, \
+    search_time_rtree, \
+    search_time_rtree_mbr, \
+    search_time_merkle_tree = calc_trace_every_n()
+
+    # 还是可以直接调用plot_every_n函数绘制
+    plot_trace_every_n(
+        d_list,
+        n_list,
+        insert_time_rtree,
+        insert_time_rtree_mbr,
+        insert_time_merkle_tree,
+        storage_size_rtree,
+        storage_size_rtree_mbr,
+        storage_size_merkle_tree,
+        search_time_rtree,
+        search_time_rtree_mbr,
+        search_time_merkle_tree
+    )
+
+
 if __name__ == '__main__':
     # 比较树本身
     # run_tree_self()
@@ -137,4 +167,5 @@ if __name__ == '__main__':
     # 不同总体交易量下
     # run_every_t()
 
-    print(123)
+    # 溯源 不同区块交易量下
+    run_trace_every_n()

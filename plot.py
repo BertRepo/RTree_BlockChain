@@ -45,8 +45,8 @@ def plot_every_n(
     # 绘制构建时间的比较
     fig, axs = plt.subplots(1, len(d_list), figsize=(18, 6))
     for i, d in enumerate(d_list):
-        axs[i].plot(n_list, insert_time_rtree[d], label='R-tree', marker='o')
-        axs[i].plot(n_list, insert_time_rtree_mbr[d], label='MR-tree', marker='v')
+        axs[i].plot(n_list, insert_time_rtree[d], label='MR-tree', marker='o')
+        axs[i].plot(n_list, insert_time_rtree_mbr[d], label='MR-tree with MBR', marker='v')
         axs[i].plot(n_list, insert_time_merkle_tree[d], label='MH-tree', marker='x')
         axs[i].set_title(f'属性数量={d}')
         axs[i].set_xlabel('区块内交易数量(个)')
@@ -59,8 +59,8 @@ def plot_every_n(
     # 绘制存储容量的比较
     fig, axs = plt.subplots(1, len(d_list), figsize=(18, 6))
     for i, d in enumerate(d_list):
-        axs[i].plot(n_list, storage_size_rtree[d], label='R-tree', marker='o')
-        axs[i].plot(n_list, storage_size_rtree_mbr[d], label='MR-tree', marker='v')
+        axs[i].plot(n_list, storage_size_rtree[d], label='MR-tree', marker='o')
+        axs[i].plot(n_list, storage_size_rtree_mbr[d], label='MR-tree with MBR', marker='v')
         axs[i].plot(n_list, storage_size_merkle_tree[d], label='Merkle Tree', marker='x')
         axs[i].set_title(f'属性数量={d}')
         axs[i].set_xlabel('区块内交易数量(个)')
@@ -73,8 +73,8 @@ def plot_every_n(
     # 存在条件查询时间比较
     fig, axs = plt.subplots(1, len(d_list), figsize=(18, 6))
     for i, d in enumerate(d_list):
-        axs[i].plot(n_list, search_time_rtree[d], label='R-tree', marker='o')
-        axs[i].plot(n_list, search_time_rtree_mbr[d], label='MR-tree', marker='v')
+        axs[i].plot(n_list, search_time_rtree[d], label='MR-tree', marker='o')
+        axs[i].plot(n_list, search_time_rtree_mbr[d], label='MR-tree with MBR', marker='v')
         axs[i].plot(n_list, search_time_merkle_tree[d], label='Merkle Tree', marker='x')
         axs[i].set_title(f'属性数量={d}')
         axs[i].set_xlabel('区块内交易数量(个)')
@@ -90,8 +90,8 @@ def plot_every_n(
     # 不存在条件查询时间比较
     fig, axs = plt.subplots(1, len(d_list), figsize=(18, 6))
     for i, d in enumerate(d_list):
-        axs[i].plot(n_list, search_no_time_rtree[d], label='R-tree', marker='o')
-        axs[i].plot(n_list, search_no_time_rtree_mbr[d], label='MR-tree', marker='v')
+        axs[i].plot(n_list, search_no_time_rtree[d], label='MR-tree', marker='o')
+        axs[i].plot(n_list, search_no_time_rtree_mbr[d], label='MR-tree with MBR', marker='v')
         axs[i].plot(n_list, search_no_time_merkle_tree[d], label='Merkle Tree', marker='x')
         axs[i].set_title(f'属性数量={d}')
         axs[i].set_xlabel('区块内交易数量(个)')
@@ -103,7 +103,6 @@ def plot_every_n(
     fig.suptitle('不同区块交易量下的不存在条件查询时耗结果图', fontsize=16)
     plt.savefig('search_no_time_comparison_n.pdf', format='pdf')
     plt.show()
-
 
 
 def plot_every_d(
@@ -126,8 +125,8 @@ def plot_every_d(
     # 绘制构建时间的比较
     fig, axs = plt.subplots(1, len(n_list), figsize=(18, 6))
     for i, n in enumerate(n_list):
-        axs[i].plot(d_list, insert_time_rtree[n], label='R-tree', marker='o')
-        axs[i].plot(d_list, insert_time_rtree_mbr[n], label='MR-tree', marker='v')
+        axs[i].plot(d_list, insert_time_rtree[n], label='MR-tree', marker='o')
+        axs[i].plot(d_list, insert_time_rtree_mbr[n], label='MR-tree with MBR', marker='v')
         axs[i].plot(d_list, insert_time_merkle_tree[n], label='Merkle Tree', marker='x')
         axs[i].set_title(f'区块内交易量={n}')
         axs[i].set_xlabel('属性数量(个)')
@@ -140,8 +139,8 @@ def plot_every_d(
     # 绘制存储容量的比较
     fig, axs = plt.subplots(1, len(n_list), figsize=(18, 6))
     for i, n in enumerate(n_list):
-        axs[i].plot(d_list, storage_size_rtree[n], label='R-tree', marker='o')
-        axs[i].plot(d_list, storage_size_rtree_mbr[n], label='MR-tree', marker='v')
+        axs[i].plot(d_list, storage_size_rtree[n], label='MR-tree', marker='o')
+        axs[i].plot(d_list, storage_size_rtree_mbr[n], label='MR-tree with MBR', marker='v')
         axs[i].plot(d_list, storage_size_merkle_tree[n], label='Merkle Tree', marker='x')
         axs[i].set_title(f'区块内交易量={n}')
         axs[i].set_xlabel('属性数量(个)')
@@ -154,8 +153,8 @@ def plot_every_d(
     # 存在条件下搜索时间的比较
     fig, axs = plt.subplots(1, len(n_list), figsize=(18, 6))
     for i, n in enumerate(n_list):
-        axs[i].plot(d_list, search_time_rtree[n], label='R-tree', marker='o')
-        axs[i].plot(d_list, search_time_rtree_mbr[n], label='MR-tree', marker='v')
+        axs[i].plot(d_list, search_time_rtree[n], label='MR-tree', marker='o')
+        axs[i].plot(d_list, search_time_rtree_mbr[n], label='MR-tree with MBR', marker='v')
         axs[i].plot(d_list, search_time_merkle_tree[n], label='Merkle Tree', marker='x')
         axs[i].set_title(f'区块内交易量={n}')
         axs[i].set_xlabel('属性数量(个)')
@@ -169,8 +168,8 @@ def plot_every_d(
     # 不存在条件下搜索时间的比较
     fig, axs = plt.subplots(1, len(n_list), figsize=(18, 6))
     for i, n in enumerate(n_list):
-        axs[i].plot(d_list, search_no_time_rtree[n], label='R-tree', marker='o')
-        axs[i].plot(d_list, search_no_time_rtree_mbr[n], label='MR-tree', marker='v')
+        axs[i].plot(d_list, search_no_time_rtree[n], label='MR-tree', marker='o')
+        axs[i].plot(d_list, search_no_time_rtree_mbr[n], label='MR-tree with MBR', marker='v')
         axs[i].plot(d_list, search_no_time_merkle_tree[n], label='Merkle Tree', marker='x')
         axs[i].set_title(f'区块内交易量={n}')
         axs[i].set_xlabel('属性数量(个)')
@@ -180,8 +179,6 @@ def plot_every_d(
     fig.suptitle('不同属性数量下的不存在条件查询时耗结果图', fontsize=16)
     plt.savefig('search_no_time_comparison_d.pdf', format='pdf')
     plt.show()
-
-
 
 
 def plot_every_t(num_transactions,
@@ -272,7 +269,6 @@ def plot_every_t(num_transactions,
     plt.show()
 
 
-
 def plot_tree_self(num_transactions, insert_time_results_r_tree, insert_time_results_mt, search_time_results_r_tree, search_time_results_mt):
     """绘制对比图"""
     # 绘制插入时间的比较
@@ -309,6 +305,66 @@ def plot_tree_self(num_transactions, insert_time_results_r_tree, insert_time_res
     plt.legend()
     # 设置导出的文件名和格式为PDF
     plt.savefig('search_time_comparison.pdf', format='pdf')
+    plt.show()
+
+
+def plot_trace_every_n(
+        d_list,
+        n_list,
+        insert_time_rtree,
+        insert_time_rtree_mbr,
+        insert_time_merkle_tree,
+        storage_size_rtree,
+        storage_size_rtree_mbr,
+        storage_size_merkle_tree,
+        search_time_rtree,
+        search_time_rtree_mbr,
+        search_time_merkle_tree):
+    """绘制 溯源 不同区块交易量下对比图"""
+
+    # 绘制构建时间的比较
+    fig, axs = plt.subplots(1, len(d_list), figsize=(18, 6))
+    for i, d in enumerate(d_list):
+        axs[i].plot(n_list, insert_time_rtree[d], label='MR-tree', marker='o')
+        axs[i].plot(n_list, insert_time_rtree_mbr[d], label='MR-tree with MBR', marker='v')
+        axs[i].plot(n_list, insert_time_merkle_tree[d], label='MH-tree', marker='x')
+        axs[i].set_title(f'属性数量={d}')
+        axs[i].set_xlabel('区块内交易数量(个)')
+        axs[i].set_ylabel('时间(s)')
+        axs[i].legend()
+    fig.suptitle('不同区块交易量下的区块链构建时耗结果图', fontsize=16)
+    plt.savefig('history_insert_times_comparison_n.pdf', format='pdf')
+    plt.show()
+
+    # 绘制存储容量的比较
+    fig, axs = plt.subplots(1, len(d_list), figsize=(18, 6))
+    for i, d in enumerate(d_list):
+        axs[i].plot(n_list, storage_size_rtree[d], label='MR-tree', marker='o')
+        axs[i].plot(n_list, storage_size_rtree_mbr[d], label='MR-tree with MBR', marker='v')
+        axs[i].plot(n_list, storage_size_merkle_tree[d], label='Merkle Tree', marker='x')
+        axs[i].set_title(f'属性数量={d}')
+        axs[i].set_xlabel('区块内交易数量(个)')
+        axs[i].set_ylabel('大小(bytes)')
+        axs[i].legend()
+    fig.suptitle('不同区块交易量下的区块链存储开销结果图', fontsize=16)
+    plt.savefig('history_storage_size_comparison_n.pdf', format='pdf')
+    plt.show()
+
+    # 存在条件查询时间比较
+    fig, axs = plt.subplots(1, len(d_list), figsize=(18, 6))
+    for i, d in enumerate(d_list):
+        axs[i].plot(n_list, search_time_rtree[d], label='MR-tree', marker='o')
+        axs[i].plot(n_list, search_time_rtree_mbr[d], label='MR-tree with MBR', marker='v')
+        axs[i].plot(n_list, search_time_merkle_tree[d], label='Merkle Tree', marker='x')
+        axs[i].set_title(f'属性数量={d}')
+        axs[i].set_xlabel('区块内交易数量(个)')
+        axs[i].set_ylabel('时间(s)')
+        axs[i].legend()
+        axs[i].set_yscale('log')
+        axs[i].yaxis.set_major_locator(LogLocator(base=10.0, numticks=10))
+        axs[i].yaxis.set_major_formatter(LogFormatter(base=10.0, labelOnlyBase=False))
+    fig.suptitle('不同区块交易量下的溯源时耗结果图', fontsize=16)
+    plt.savefig('history_search_time_comparison_n.pdf', format='pdf')
     plt.show()
 
 
@@ -361,6 +417,6 @@ def plot_from_saved_data(file_path, plot_type='n'):
         print("Invalid plot type. Please use 'n' or 'd'.")
 
 
-# 调用函数绘制图表
+# # 调用函数绘制图表
 # plot_from_saved_data('output/every_n_results.json', plot_type='n')
 # plot_from_saved_data('output/every_d_results.json', plot_type='d')
