@@ -1,0 +1,8 @@
+*.log
+*.tmp
+*.out
+*.pdf
+.idea/
+dataset/
+backup/
+output/
