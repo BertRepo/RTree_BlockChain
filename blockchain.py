@@ -111,6 +111,9 @@ class Blockchain:
 
             self.chain.append(block)
 
+    def length(self):
+        return self.chain.length
+
     def add_transaction(self, transaction):
         self.current_transactions.append(transaction)
         if len(self.current_transactions) >= self.max_transactions:
@@ -139,18 +142,20 @@ class Blockchain:
 
     def add_block(self, block):
         self.chain.append(block)
-        transactions_dict = convert_ndarray_to_list([tx.to_dict() for tx in block.transactions])
         if isinstance(block, Block):
-            self.db.save({
-                'type': 'RTreeBlock',
-                'r_tree_root': block.r_tree_root,
-                'timestamp': block.timestamp,
-                'prev_hash': block.prev_hash,
-                'tree': json.dumps(block.tree, default=serialize_rtree) if isinstance(block.tree, RTree) else block.tree,
-                'transactions': transactions_dict,
-                'extra_data': block.extra_data
-            })
+            # transactions_dict = convert_ndarray_to_list([tx.to_dict() for tx in block.transactions])
+            # self.db.save({
+            #     'type': 'RTreeBlock',
+            #     'r_tree_root': block.r_tree_root,
+            #     'timestamp': block.timestamp,
+            #     'prev_hash': block.prev_hash,
+            #     'tree': json.dumps(block.tree, default=serialize_rtree) if isinstance(block.tree, RTree) else block.tree,
+            #     'transactions': transactions_dict,
+            #     'extra_data': block.extra_data
+            # })
+            return
         elif isinstance(block, MerkleTreeBlock):
+            transactions_dict = convert_ndarray_to_list([tx.to_dict() for tx in block.transactions])
             self.db.save({
                 'type': 'MerkleTreeBlock',
                 'merkle_root': block.merkle_root,

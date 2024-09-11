@@ -187,16 +187,14 @@ def get_random_nonexistent_data(original_transactions, num_transactions, d):
     # TODO: 检查一下过滤后的交易列表的长度
     return filtered_transactions
 
-# TODO: 修改
-def generate_history_data(num_transactions, d, num_history, n):
+def generate_history_data(num_transactions, d, num_history):
     """
     生成历史数据集
     """
-    # 生成 num_transactions 条交易
+    # 读取并抽样数据
     df = pd.read_csv(filename)
     data = df.sample(n=num_transactions)
     transactions = []
-    # blockchain = []  # 用于存储区块链
 
     # 获取所有属性列表
     attributes = ['baby_birthday', 'baby_sex', 'baby_weight', 'pregnant_week',
@@ -204,71 +202,46 @@ def generate_history_data(num_transactions, d, num_history, n):
                   'screen_register_time', 'dia_result', 'dia_date', 'report_add_date',
                   'dia_advice_type', 'patient_type']
     selected_attributes = attributes[:d]
+    selected_attributes.append('id')
 
     for i in range(num_transactions):
-        tx_hash = random_string()
-        attributeArray = data[selected_attributes].iloc[i].values  # 使用转换后的数据作为交易属性值
-        attribute = convert_to_serializable(attributeArray)
-        # 生成边界
-        bounds = generate_bounds(data.iloc[i], selected_attributes)
-        transactions.append(Transaction(tx_hash, attribute, bounds))  # 将转换后的数据作为交易存储在区块中
-    #     original_row = data.iloc[i]
-    #     original_row['id'] = i  # 为每条数据添加 id 字段
-    #     print(original_row)
-    #     history_transactions = []
-    #
-    #     for j in range(num_history):
-    #         tx_hash = random_string()  # 生成随机交易哈希
-    #
-    #         modified_row = original_row.copy()
-    #
-    #         for attr in selected_attributes:
-    #             if attr in ['baby_birthday', 'screen_register_time', 'report_add_date', 'dia_date']:
-    #                 # 处理时间戳类型的属性
-    #                 new_timestamp = pd.to_datetime(modified_row[attr]) + pd.to_timedelta(np.random.randint(-1000, 1000),
-    #                                                                                      unit='s')
-    #                 modified_row[attr] = new_timestamp.isoformat()  # 转换为 ISO 8601 格式的字符串
-    #             elif attr == 'baby_sex':
-    #                 # 处理性别属性
-    #                 modified_row[attr] = random.choice(['雄', '雌'])
-    #             else:
-    #                 # 处理其他数值型属性
-    #                 modified_row[attr] = modified_row[attr] + np.random.randint(0, 20)
-    #
-    #         # 将修改后的数据转为可序列化的格式
-    #         attribute = convert_to_serializable(modified_row[selected_attributes].tolist())
-    #         print(modified_row)
-    #         # 生成边界
-    #         bounds = generate_bounds(modified_row, selected_attributes)
-    #         # 将交易加入列表
-    #         history_transactions.append(Transaction(tx_hash, attribute, bounds, modified_row['id']))
-    #
-    #     transactions.extend(history_transactions)
-    #
-    # # 打乱 transactions 列表
-    # random.shuffle(transactions)
+        original_row = data.iloc[i].copy()
+        original_row['id'] = i  # 为每条数据添加 id 字段
+        history_transactions = []
+
+        for j in range(num_history):
+            tx_hash = random_string()  # 生成随机交易哈希
+
+            # 深拷贝原始数据，防止修改原始数据
+            modified_row = original_row.copy()
+
+            for attr in selected_attributes:
+                if attr in ['baby_birthday', 'screen_register_time', 'report_add_date', 'dia_date']:
+                    # 处理时间戳类型的属性，保留为 datetime 格式
+                    new_timestamp = pd.to_datetime(modified_row[attr], dayfirst=True) + pd.to_timedelta(
+                        np.random.randint(1, 1000), unit='s')
+                    modified_row[attr] = new_timestamp  # 保留为 datetime 对象
+                elif attr == 'baby_sex':
+                    # 处理性别属性
+                    modified_row[attr] = random.choice(['男', '女'])
+                else:
+                    # 处理其他数值型属性
+                    modified_row[attr] = modified_row[attr] + np.random.randint(1, 5)
+
+            # 将修改后的数据转为可序列化的格式
+            attribute = convert_to_serializable(modified_row[selected_attributes].tolist())
+            # 生成边界
+            bounds = generate_bounds(modified_row, selected_attributes)
+            # 将交易加入列表
+            history_transactions.append(Transaction(tx_hash, attribute, bounds))
+
+        # 添加到总的交易列表
+        transactions.extend(history_transactions)
+
+    # 打乱 transactions 列表
+    random.shuffle(transactions)
 
     return transactions
-
-    # # 将交易插入区块链中
-    # current_block = []
-    # for tx in transactions:
-    #     # 如果当前区块中的交易数量达到 n，则将当前区块添加到区块链，并重置当前区块
-    #     if len(current_block) == n:
-    #         blockchain.append(current_block)
-    #         current_block = []
-    #
-    #     # 查找该交易的 id 是否已经在区块链中
-    #     tx_ids = [t.id for block in blockchain for t in block]
-    #     prev_hash = tx_ids.index(tx.id) if tx.id in tx_ids else -1
-    #     tx.prev_hash = prev_hash  # 更新 prev_hash 字段
-    #     current_block.append(tx)
-    #
-    # # 如果还有未插入区块链的交易，将其插入最后一个区块
-    # if current_block:
-    #     blockchain.append(current_block)
-    #
-    # return blockchain
 
 
 def measure_insert_time_mt(transactions):

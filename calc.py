@@ -935,7 +935,11 @@ def calc_trace_every_n():
             blockchain_mt = Blockchain(mt_db)
 
             # 获取数据
-            transactions = generate_history_data(num_transactions, d, num_history, n)
+            transactions = generate_history_data(num_transactions, d, num_history)
+
+            # 历史数据构建索引状态表
+            mapping_r = {}
+            mapping_mbr = {}
 
             '''
             RTree 构建 存储
@@ -944,7 +948,20 @@ def calc_trace_every_n():
             for i in range(0, num_transactions, n):
                 tx_batch = transactions[i:i + n]
                 rtree = RTree(order)
+                current_block_index = blockchain_r.length()  # 当前区块的索引
+
                 for tx in tx_batch:
+                    tx_id = tx[-2]  # 假设 tx_id 是交易的唯一标识符
+                    if tx_id in mapping_r:
+                        # 如果交易的历史版本已经存在，则将历史区块索引添加到当前交易
+                        history_block_index = mapping_r[tx_id]
+                        tx.append(history_block_index)
+                    else:
+                        # 如果交易是第一次出现，添加 -1 作为占位符
+                        tx.append(-1)
+
+                    # 更新 mapping_r，将当前交易的 ID 映射到当前区块索引
+                    mapping_r[tx_id] = current_block_index
                     rtree.insert(tx)
 
                 # 计算 R 树的根哈希
@@ -973,13 +990,25 @@ def calc_trace_every_n():
             for i in range(0, num_transactions, n):
                 tx_batch = transactions[i:i + n]
                 rtree_mbr = RTree(order)
+                current_block_index = blockchain_mbr.length()  # 当前区块的索引
+
                 for tx in tx_batch:
+                    tx_id = tx[-2]  # 假设 tx_id 是交易的唯一标识符
+                    if tx_id in mapping_mbr:
+                        # 如果交易的历史版本已经存在，则将历史区块索引添加到当前交易
+                        history_block_index = mapping_mbr[tx_id]
+                        tx.append(history_block_index)
+                    else:
+                        # 如果交易是第一次出现，添加 -1 作为占位符
+                        tx.append(-1)
+
+                    # 更新 mapping_mbr，将当前交易的 ID 映射到当前区块索引
+                    mapping_mbr[tx_id] = current_block_index
                     rtree_mbr.insert(tx)
 
                 # 计算 R 树的根哈希
                 merkle_root_rt_mbr = rtree_mbr.calculate_merkle_root()
-
-                # 创建新的区块
+                # 创建新的区块，并将 MBR（最小边界矩形）存储在区块中
                 new_block = Block(merkle_root_rt_mbr, rtree_mbr, tx_batch, time.time(), "previous_hash_here", n,
                                   rtree_mbr.root.bounds)
                 blockchain_mbr.add_block(new_block)
@@ -997,8 +1026,9 @@ def calc_trace_every_n():
             total_rtree_storage_size_mbr -= len(serialized_trans_mbr)
 
             '''
-            MerkleTree 构建 存储
+            fabric----MerkleTree 构建 存储
             '''
+            # TODO: 修改
             start_time = time.time()
             for i in range(0, num_transactions, n):
                 tx_batch = transactions[i:i + n]
