@@ -6,7 +6,7 @@ import couchdb
 
 # 导入自定义包
 from blockchain import Transaction, Blockchain, Block, RTree, MerkleTree, MerkleTreeBlock
-from data import get_dataset, get_random_nonexistent_data, measure_insert_time_r_tree, measure_insert_time_mt, measure_search_time_r_tree, measure_search_time_mt
+from data import get_dataset, get_random_nonexistent_data, generate_history_data, measure_insert_time_r_tree, measure_insert_time_mt, measure_search_time_r_tree, measure_search_time_mt
 
 
 def intersects(mbr1, mbr2):
@@ -869,5 +869,261 @@ def calc_tree_self():
 '''
 针对几种溯源方案的 构建 溯源 的测试
 '''
-def calc_trace_self():
-    print(111)
+def calc_trace_every_n():
+    # 先用R树查询到最新的节点和相应的原始数据
+    # 然后根据原始数据中的区块号和id定位到前一条数据
+    server = couchdb.Server('http://admin:123456@127.0.0.1:5984/')
+
+    # 固定交易量 随机选择
+    num_transactions = 1000
+    # 每一条对应生成10条历史数据
+    num_history = 10
+    # 节点内最大交易量
+    order = 1
+    # 区块内最大交易量
+    n_list = [5, 10, 15, 20, 25, 30, 35, 40, 45]
+    # 属性数量
+    d_list = [2, 6, 10]
+
+    # 构建时间
+    insert_time_rtree = {}
+    insert_time_rtree_mbr = {}
+    insert_time_merkle_tree = {}
+    # 存在搜索
+    search_time_rtree = {}
+    search_time_rtree_mbr = {}
+    search_time_merkle_tree = {}
+    # 存储
+    storage_size_rtree = {}
+    storage_size_rtree_mbr = {}
+    storage_size_merkle_tree = {}
+
+    for d in d_list:
+        # 构建时间
+        insert_time_results_rtree = []
+        insert_time_results_rtree_mbr = []
+        insert_time_results_merkle_tree = []
+        # 存在搜索
+        search_time_results_rtree = []
+        search_time_results_rtree_mbr = []
+        search_time_results_merkle_tree = []
+        # 存储
+        storage_size_results_rtree = []
+        storage_size_results_rtree_mbr = []
+        storage_size_results_merkle_tree = []
+
+        for n in n_list:
+            print(f"当前属性数量：{d}，当前区块内交易数量：{n}")
+
+            rtree_db_name = 'blockchain_history_rtree_{}_{}'.format(d, n)
+            rtree_mbr_db_name = 'blockchain_history_rtree_mbr_{}_{}'.format(d, n)
+            mt_db_name = 'blockchain_history_mt_{}_{}'.format(d, n)
+
+            # 函数用于检查并删除数据库，如果存在的话
+            def delete_and_create_db(db_name):
+                if db_name in server:
+                    server.delete(db_name)
+                return server.create(db_name)
+
+            # 删除并创建新数据库
+            rtree_db = delete_and_create_db(rtree_db_name)
+            rtree_mbr_db = delete_and_create_db(rtree_mbr_db_name)
+            mt_db = delete_and_create_db(mt_db_name)
+            # 创建区块链对象
+            blockchain_r = Blockchain(rtree_db)
+            blockchain_mbr = Blockchain(rtree_mbr_db)
+            blockchain_mt = Blockchain(mt_db)
+
+            # 获取数据
+            transactions = generate_history_data(num_transactions, d, num_history)
+
+            # 历史数据构建索引状态表
+            mapping_r = {}
+            mapping_mbr = {}
+
+            '''
+            RTree 构建 存储
+            '''
+            start_time = time.time()
+            for i in range(0, num_transactions, n):
+                tx_batch = transactions[i:i + n]
+                rtree = RTree(order)
+                current_block_index = blockchain_r.length()  # 当前区块的索引
+
+                for tx in tx_batch:
+                    tx_id = tx[-2]  # 假设 tx_id 是交易的唯一标识符
+                    if tx_id in mapping_r:
+                        # 如果交易的历史版本已经存在，则将历史区块索引添加到当前交易
+                        history_block_index = mapping_r[tx_id]
+                        tx.append(history_block_index)
+                    else:
+                        # 如果交易是第一次出现，添加 -1 作为占位符
+                        tx.append(-1)
+
+                    # 更新 mapping_r，将当前交易的 ID 映射到当前区块索引
+                    mapping_r[tx_id] = current_block_index
+                    rtree.insert(tx)
+
+                # 计算 R 树的根哈希
+                merkle_root_rt = rtree.calculate_merkle_root()
+
+                # 创建新的区块
+                new_block = Block(merkle_root_rt, rtree, tx_batch, time.time(), "previous_hash_here", n)
+                blockchain_r.add_block(new_block)
+
+            # 计算 R 树构建时间
+            insert_time_with_rtree = time.time() - start_time
+
+            # 计算存储大小
+            total_rtree_storage_size = 0
+            for block in blockchain_r.chain:
+                serialized_block = pickle.dumps(block)
+                total_rtree_storage_size += len(serialized_block)
+            serialized_trans = pickle.dumps(transactions)
+            # 减去多的一份交易
+            total_rtree_storage_size -= len(serialized_trans)
+
+            '''
+            mbr_RTree 构建 存储
+            '''
+            start_time = time.time()
+            for i in range(0, num_transactions, n):
+                tx_batch = transactions[i:i + n]
+                rtree_mbr = RTree(order)
+                current_block_index = blockchain_mbr.length()  # 当前区块的索引
+
+                for tx in tx_batch:
+                    tx_id = tx[-2]  # 假设 tx_id 是交易的唯一标识符
+                    if tx_id in mapping_mbr:
+                        # 如果交易的历史版本已经存在，则将历史区块索引添加到当前交易
+                        history_block_index = mapping_mbr[tx_id]
+                        tx.append(history_block_index)
+                    else:
+                        # 如果交易是第一次出现，添加 -1 作为占位符
+                        tx.append(-1)
+
+                    # 更新 mapping_mbr，将当前交易的 ID 映射到当前区块索引
+                    mapping_mbr[tx_id] = current_block_index
+                    rtree_mbr.insert(tx)
+
+                # 计算 R 树的根哈希
+                merkle_root_rt_mbr = rtree_mbr.calculate_merkle_root()
+                # 创建新的区块，并将 MBR（最小边界矩形）存储在区块中
+                new_block = Block(merkle_root_rt_mbr, rtree_mbr, tx_batch, time.time(), "previous_hash_here", n,
+                                  rtree_mbr.root.bounds)
+                blockchain_mbr.add_block(new_block)
+
+            # 计算 R 树构建时间
+            insert_time_with_rtree_mbr = time.time() - start_time
+
+            # 计算存储大小
+            total_rtree_storage_size_mbr = 0
+            for block in blockchain_mbr.chain:
+                serialized_block_mbr = pickle.dumps(block)
+                total_rtree_storage_size_mbr += len(serialized_block_mbr)
+            serialized_trans_mbr = pickle.dumps(transactions)
+            # 减去多的一份交易
+            total_rtree_storage_size_mbr -= len(serialized_trans_mbr)
+
+            '''
+            fabric----MerkleTree 构建 存储
+            '''
+            # TODO: 修改
+            start_time = time.time()
+            for i in range(0, num_transactions, n):
+                tx_batch = transactions[i:i + n]
+                merkle_tree = MerkleTree(order)
+                for tx in tx_batch:
+                    merkle_tree.insert(Transaction(tx.tx_hash, tx.attribute))
+
+                # 计算 Merkle Tree 的根哈希
+                merkle_root_mt = merkle_tree.get_root_hash()
+
+                # 创建新的区块
+                new_block = MerkleTreeBlock(merkle_root_mt, merkle_tree, tx_batch, time.time(), "previous_hash_here", n)
+                blockchain_mt.add_block(new_block)
+
+                # 计算 Merkle Tree 构建时间
+            insert_time_with_merkle_tree = time.time() - start_time
+
+            # 计算存储大小
+            total_merkle_tree_storage_size = 0
+            for block in blockchain_mt.chain:
+                serialized_block_mt = pickle.dumps(block)
+                total_merkle_tree_storage_size += len(serialized_block_mt)
+
+            """-----------对存在的查询条件---------"""
+            attributes_to_search = random.sample([tx for tx in transactions], min(50, num_transactions))
+            ''' RTree 搜索 '''
+            start_time = time.time()
+            for tx in attributes_to_search:
+                for block in blockchain_r.chain:
+                    block.tree.search(tx.bounds)
+            search_time_with_rtree = time.time() - start_time
+            ''' mbr_RTree 搜索 '''
+            start_time = time.time()
+            for tx_mbr in attributes_to_search:
+                for block in blockchain_mbr.chain:
+                    if intersects(tx_mbr.bounds, block.extra_data):
+                        block.tree.search(tx_mbr.bounds)
+            search_time_with_rtree_mbr = time.time() - start_time
+            ''' MerkleTree 搜索 其实就是列表（块体内的事务列表） '''
+            start_time = time.time()
+            for attr in attributes_to_search:
+                for block in blockchain_mt.chain:
+                    block.tree.search(transactions, attr, d)
+            search_time_with_list = time.time() - start_time
+
+            # 保存和打印结果
+            insert_time_results_rtree.append(insert_time_with_rtree)
+            insert_time_results_rtree_mbr.append(insert_time_with_rtree_mbr)
+            insert_time_results_merkle_tree.append(insert_time_with_merkle_tree)
+            storage_size_results_rtree.append(total_rtree_storage_size)
+            storage_size_results_rtree_mbr.append(total_rtree_storage_size_mbr)
+            storage_size_results_merkle_tree.append(total_merkle_tree_storage_size)
+            search_time_results_rtree.append(search_time_with_rtree)
+            search_time_results_rtree_mbr.append(search_time_with_rtree_mbr)
+            search_time_results_merkle_tree.append(search_time_with_list)
+
+        # 构建时间
+        insert_time_rtree[d] = insert_time_results_rtree
+        insert_time_rtree_mbr[d] = insert_time_results_rtree_mbr
+        insert_time_merkle_tree[d] = insert_time_results_merkle_tree
+        # 存在搜索
+        search_time_rtree[d] = search_time_results_rtree
+        search_time_rtree_mbr[d] = search_time_results_rtree_mbr
+        search_time_merkle_tree[d] = search_time_results_merkle_tree
+        # 存储
+        storage_size_rtree[d] = storage_size_results_rtree
+        storage_size_rtree_mbr[d] = storage_size_results_rtree_mbr
+        storage_size_merkle_tree[d] = storage_size_results_merkle_tree
+
+    d_list_str = [str(d) for d in d_list]
+
+    # 在实验结束后调用函数保存结果
+    save_experiment_results(
+        d_list_str,
+        n_list,
+        insert_time_rtree,
+        insert_time_rtree_mbr,
+        insert_time_merkle_tree,
+        storage_size_rtree,
+        storage_size_rtree_mbr,
+        storage_size_merkle_tree,
+        search_time_rtree,
+        search_time_rtree_mbr,
+        search_time_merkle_tree,
+        'output/history_every_n_results.json'
+    )
+
+    return d_list, \
+           n_list, \
+           insert_time_rtree, \
+           insert_time_rtree_mbr, \
+           insert_time_merkle_tree, \
+           storage_size_rtree, \
+           storage_size_rtree_mbr, \
+           storage_size_merkle_tree, \
+           search_time_rtree, \
+           search_time_rtree_mbr, \
+           search_time_merkle_tree
