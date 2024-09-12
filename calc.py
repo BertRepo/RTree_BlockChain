@@ -212,6 +212,15 @@ def calc_every_n():
             for block in blockchain_mt.chain:
                 serialized_block_mt = pickle.dumps(block)
                 total_merkle_tree_storage_size += len(serialized_block_mt)
+            print('开始', total_merkle_tree_storage_size)
+            # 减去多余的边界
+            firstBlock = blockchain_mt.getBlock(0)
+            firstTransactionBatch = firstBlock.getTransaction()
+            firstTransactionBounds = firstTransactionBatch[0].bounds
+            serialized_bounds_mt = pickle.dumps(firstTransactionBounds)
+            # 减去交易中多的边界
+            total_merkle_tree_storage_size -= len(serialized_bounds_mt) * num_transactions
+            print('最后',total_merkle_tree_storage_size)
 
             """-----------对存在的查询条件---------"""
             attributes_to_search = random.sample([tx for tx in transactions], min(50, num_transactions))
@@ -484,6 +493,13 @@ def calc_every_d():
             for block in blockchain_mt.chain:
                 serialized_block_mt = pickle.dumps(block)
                 total_merkle_tree_storage_size += len(serialized_block_mt)
+            # 减去多余的边界
+            firstBlock = blockchain_mt.getBlock(0)
+            firstTransactionBatch = firstBlock.getTransaction()
+            firstTransactionBounds = firstTransactionBatch[0].bounds
+            serialized_bounds_mt = pickle.dumps(firstTransactionBounds)
+            # 减去交易中多的边界
+            total_merkle_tree_storage_size -= len(serialized_bounds_mt) * num_transactions
 
             """-----------对存在的查询条件---------"""
             attributes_to_search = random.sample([tx for tx in transactions], min(50, num_transactions))
@@ -739,6 +755,13 @@ def calc_every_t():
         for block in blockchain_mt.chain:
             serialized_block_mt = pickle.dumps(block)
             total_merkle_tree_storage_size += len(serialized_block_mt)
+        # 减去多余的边界
+        firstBlock = blockchain_mt.getBlock(0)
+        firstTransactionBatch = firstBlock.getTransaction()
+        firstTransactionBounds = firstTransactionBatch[0].bounds
+        serialized_bounds_mt = pickle.dumps(firstTransactionBounds)
+        # 减去交易中多的边界
+        total_merkle_tree_storage_size -= len(serialized_bounds_mt) * num_transactions
 
         """-----------对存在的查询条件---------"""
         attributes_to_search = random.sample([tx for tx in transactions], min(50, num_transactions))
@@ -1051,6 +1074,13 @@ def calc_trace_every_n():
             for block in blockchain_mt.chain:
                 serialized_block_mt = pickle.dumps(block)
                 total_merkle_tree_storage_size += len(serialized_block_mt)
+            # 减去多余的边界
+            firstBlock = blockchain_mt.getBlock(0)
+            firstTransactionBatch = firstBlock.getTransaction()
+            firstTransactionBounds = firstTransactionBatch[0].bounds
+            serialized_bounds_mt = pickle.dumps(firstTransactionBounds)
+            # 减去交易中多的边界
+            total_merkle_tree_storage_size -= len(serialized_bounds_mt) * num_transactions
 
             """-----------对存在的查询条件---------"""
             attributes_to_search = random.sample([tx for tx in transactions], min(50, num_transactions))

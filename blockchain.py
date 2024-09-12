@@ -112,7 +112,12 @@ class Blockchain:
             self.chain.append(block)
 
     def length(self):
-        return self.chain.length
+        return len(self.chain)
+
+    def getBlock(self, index):
+        if index < self.length():
+            return self.chain[index]
+        return {}
 
     def add_transaction(self, transaction):
         self.current_transactions.append(transaction)
@@ -395,6 +400,9 @@ class Block:
             prev_hash=data['prev_hash'],
         )
 
+    def getTransaction(self):
+        return self.transactions
+
 '''
     默克尔树部分
 '''
@@ -654,6 +662,7 @@ class MerkleTreeBlock:
     # 计算区块的哈希值
     def calculate_hash(self):
         block_string = json.dumps(self.to_dict(), sort_keys=True)
+        print(hashlib.sha256(block_string.encode()).hexdigest())
         return hashlib.sha256(block_string.encode()).hexdigest()
 
     # 转成字典形式
@@ -676,3 +685,6 @@ class MerkleTreeBlock:
             timestamp=data['timestamp'],
             prev_hash=data['prev_hash']
         )
+
+    def getTransaction(self):
+        return self.transactions
