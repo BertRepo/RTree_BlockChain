@@ -130,13 +130,16 @@ def run_trace_every_n():
     n_list, \
     insert_time_rtree, \
     insert_time_rtree_mbr, \
-    insert_time_merkle_tree, \
+    insert_time_fabric, \
+    insert_time_fabric_sort, \
     storage_size_rtree, \
     storage_size_rtree_mbr, \
-    storage_size_merkle_tree, \
+    storage_size_fabric, \
+    storage_size_fabric_sort, \
     search_time_rtree, \
     search_time_rtree_mbr, \
-    search_time_merkle_tree = calc_trace_every_n()
+    search_time_fabric, \
+    search_time_fabric_sort = calc_trace_every_n()
 
     # 还是可以直接调用plot_every_n函数绘制
     plot_trace_every_n(
@@ -144,13 +147,16 @@ def run_trace_every_n():
         n_list,
         insert_time_rtree,
         insert_time_rtree_mbr,
-        insert_time_merkle_tree,
+        insert_time_fabric,
+        insert_time_fabric_sort,
         storage_size_rtree,
         storage_size_rtree_mbr,
-        storage_size_merkle_tree,
+        storage_size_fabric,
+        storage_size_fabric_sort,
         search_time_rtree,
         search_time_rtree_mbr,
-        search_time_merkle_tree
+        search_time_fabric,
+        search_time_fabric_sort
     )
 
 
@@ -159,7 +165,7 @@ if __name__ == '__main__':
     # run_tree_self()
 
     # 不同区块交易量下
-    run_every_n()
+    # run_every_n()
 
     # 不同属性个数下
     # run_every_d()
@@ -168,4 +174,4 @@ if __name__ == '__main__':
     # run_every_t()
 
     # 溯源 不同区块交易量下
-    # run_trace_every_n()
+    run_trace_every_n()

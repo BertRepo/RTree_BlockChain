@@ -224,7 +224,7 @@ def generate_history_data(num_transactions, d, num_history):
                 elif attr == 'baby_sex':
                     # 处理性别属性
                     modified_row[attr] = random.choice(['男', '女'])
-                else:
+                elif attr != 'id':
                     # 处理其他数值型属性
                     modified_row[attr] = modified_row[attr] + np.random.randint(1, 5)
 

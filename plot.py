@@ -313,13 +313,16 @@ def plot_trace_every_n(
         n_list,
         insert_time_rtree,
         insert_time_rtree_mbr,
-        insert_time_merkle_tree,
+        insert_time_fabric,
+        insert_time_fabric_sort,
         storage_size_rtree,
         storage_size_rtree_mbr,
-        storage_size_merkle_tree,
+        storage_size_fabric,
+        storage_size_fabric_sort,
         search_time_rtree,
         search_time_rtree_mbr,
-        search_time_merkle_tree):
+        search_time_fabric,
+        search_time_fabric_sort):
     """绘制 溯源 不同区块交易量下对比图"""
 
     # 绘制构建时间的比较
@@ -327,7 +330,8 @@ def plot_trace_every_n(
     for i, d in enumerate(d_list):
         axs[i].plot(n_list, insert_time_rtree[d], label='MR-tree', marker='o')
         axs[i].plot(n_list, insert_time_rtree_mbr[d], label='MR-tree with MBR', marker='v')
-        axs[i].plot(n_list, insert_time_merkle_tree[d], label='MH-tree', marker='x')
+        axs[i].plot(n_list, insert_time_fabric[d], label='Fabric', marker='x')
+        axs[i].plot(n_list, insert_time_fabric_sort[d], label='Fabric with Sorting', marker='s')
         axs[i].set_title(f'属性数量={d}')
         axs[i].set_xlabel('区块内交易数量(个)')
         axs[i].set_ylabel('时间(s)')
@@ -341,7 +345,8 @@ def plot_trace_every_n(
     for i, d in enumerate(d_list):
         axs[i].plot(n_list, storage_size_rtree[d], label='MR-tree', marker='o')
         axs[i].plot(n_list, storage_size_rtree_mbr[d], label='MR-tree with MBR', marker='v')
-        axs[i].plot(n_list, storage_size_merkle_tree[d], label='Merkle Tree', marker='x')
+        axs[i].plot(n_list, storage_size_fabric[d], label='Fabric', marker='x')
+        axs[i].plot(n_list, storage_size_fabric_sort[d], label='Fabric with Sorting', marker='s')
         axs[i].set_title(f'属性数量={d}')
         axs[i].set_xlabel('区块内交易数量(个)')
         axs[i].set_ylabel('大小(bytes)')
@@ -355,7 +360,8 @@ def plot_trace_every_n(
     for i, d in enumerate(d_list):
         axs[i].plot(n_list, search_time_rtree[d], label='MR-tree', marker='o')
         axs[i].plot(n_list, search_time_rtree_mbr[d], label='MR-tree with MBR', marker='v')
-        axs[i].plot(n_list, search_time_merkle_tree[d], label='Merkle Tree', marker='x')
+        axs[i].plot(n_list, search_time_fabric[d], label='Fabric', marker='x')
+        axs[i].plot(n_list, search_time_fabric_sort[d], label='Fabric with Sorting', marker='s')
         axs[i].set_title(f'属性数量={d}')
         axs[i].set_xlabel('区块内交易数量(个)')
         axs[i].set_ylabel('时间(s)')
