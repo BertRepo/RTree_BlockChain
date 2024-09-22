@@ -8,10 +8,46 @@ import couchdb
 from blockchain import Transaction, Blockchain, Block, RTree, MerkleTree, MerkleTreeBlock
 from data import get_dataset, get_random_nonexistent_data, generate_history_data, measure_insert_time_r_tree, measure_insert_time_mt, measure_search_time_r_tree, measure_search_time_mt
 
-
+# 判断两个边界是否相交
 def intersects(mbr1, mbr2):
     return all(mbr1[i] <= mbr2[i + len(mbr1) // 2] and mbr2[i] <= mbr1[i + len(mbr1) // 2] for i in range(len(mbr1) // 2))
 
+# 用于溯源 从区块链查询所有历史数据 ———— 适用于前两种方案
+def get_history_by_id(t, chain, res):
+    """
+    从区块链中溯源t的历史交易记录
+    :param t: 需要溯源的交易
+    :param chain: 区块链
+    :param res: 用于存储结果集
+    :return: 符合条件的记录列表
+    """
+    # 检查 t 是否有 attribute 和 pre_index，并且 pre_index 大于 -1
+    if t.attribute and t.pre_index > -1:
+        block = chain[t.pre_index]  # 获取包含前一个交易的区块
+        # 遍历 tx_batch 找到属性值中id相同的交易
+        for tx in block.transactions:
+            if tx.attribute[-1] == t.attribute[-1] and tx.pre_index != t.pre_index:  # 匹配倒数第一个元素 即id
+                res.append(tx)  # 当前交易加入结果集
+                get_history_by_id(tx, chain, res)  # 递归查找历史交易并加入结果集
+    return res
+
+# 用于溯源 从历史数据库查询所有历史数据 ———— 适用于后两种方案
+def query_transactions(db, match_attributes):
+    """
+    从fabric_db中查询与match_attributes匹配的交易记录
+    :param db: 数据库连接
+    :param match_attributes: 用于匹配的属性列表（不包括最后一个元素）
+    :return: 符合条件的记录列表
+    """
+    result = []
+    for doc_id in db:
+        doc = db[doc_id]
+        if 'transactions' in doc:
+            for transaction in doc['transactions']:
+                # 比较前n-1个元素是否相等
+                if transaction['attribute'][:-1] == match_attributes[:-1]:
+                    result.append(transaction)
+    return result
 
 def save_experiment_results(
     d_list,
@@ -45,6 +81,48 @@ def save_experiment_results(
         "search_no_time_rtree": search_no_time_rtree,
         "search_no_time_rtree_mbr": search_no_time_rtree_mbr,
         "search_no_time_merkle_tree": search_no_time_merkle_tree
+    }
+
+    # 将字典保存为 JSON 文件
+    with open(file_path, 'w') as f:
+        json.dump(results, f, indent=4)
+
+    print(f"实验结果已保存到 {file_path}")
+
+# 保存溯源实验结果
+def save_history_results(
+    d_list,
+    n_list,
+    insert_time_rtree,
+    insert_time_rtree_mbr,
+    insert_time_fabric,
+    insert_time_fabric_sort,
+    storage_size_rtree,
+    storage_size_rtree_mbr,
+    storage_size_fabric,
+    storage_size_fabric_sort,
+    search_time_rtree,
+    search_time_rtree_mbr,
+    search_time_fabric,
+    search_time_fabric_sort,
+    file_path="experiment_results.json"
+):
+    # 构建一个字典存储所有结果
+    results = {
+        "d_list": d_list,
+        "n_list": n_list,
+        "insert_time_rtree": insert_time_rtree,
+        "insert_time_rtree_mbr": insert_time_rtree_mbr,
+        "insert_time_fabric": insert_time_fabric,
+        "insert_time_fabric_sort": insert_time_fabric_sort,
+        "storage_size_rtree": storage_size_rtree,
+        "storage_size_rtree_mbr": storage_size_rtree_mbr,
+        "storage_size_fabric": storage_size_fabric,
+        "storage_size_fabric_sort": storage_size_fabric_sort,
+        "search_time_rtree": search_time_rtree,
+        "search_time_rtree_mbr": search_time_rtree_mbr,
+        "search_time_fabric": search_time_fabric,
+        "search_time_fabric_sort": search_time_fabric_sort
     }
 
     # 将字典保存为 JSON 文件
@@ -212,15 +290,15 @@ def calc_every_n():
             for block in blockchain_mt.chain:
                 serialized_block_mt = pickle.dumps(block)
                 total_merkle_tree_storage_size += len(serialized_block_mt)
-            print('开始', total_merkle_tree_storage_size)
-            # 减去多余的边界
-            firstBlock = blockchain_mt.getBlock(0)
-            firstTransactionBatch = firstBlock.getTransaction()
-            firstTransactionBounds = firstTransactionBatch[0].bounds
-            serialized_bounds_mt = pickle.dumps(firstTransactionBounds)
-            # 减去交易中多的边界
-            total_merkle_tree_storage_size -= len(serialized_bounds_mt) * num_transactions
-            print('最后',total_merkle_tree_storage_size)
+            # print('开始', total_merkle_tree_storage_size)
+            # # 减去多余的边界
+            # firstBlock = blockchain_mt.getBlock(0)
+            # firstTransactionBatch = firstBlock.getTransaction()
+            # firstTransactionBounds = firstTransactionBatch[0].bounds
+            # serialized_bounds_mt = pickle.dumps(firstTransactionBounds)
+            # # 减去交易中多的边界
+            # total_merkle_tree_storage_size -= len(serialized_bounds_mt) * num_transactions
+            # print('最后',total_merkle_tree_storage_size)
 
             """-----------对存在的查询条件---------"""
             attributes_to_search = random.sample([tx for tx in transactions], min(50, num_transactions))
@@ -493,13 +571,13 @@ def calc_every_d():
             for block in blockchain_mt.chain:
                 serialized_block_mt = pickle.dumps(block)
                 total_merkle_tree_storage_size += len(serialized_block_mt)
-            # 减去多余的边界
-            firstBlock = blockchain_mt.getBlock(0)
-            firstTransactionBatch = firstBlock.getTransaction()
-            firstTransactionBounds = firstTransactionBatch[0].bounds
-            serialized_bounds_mt = pickle.dumps(firstTransactionBounds)
-            # 减去交易中多的边界
-            total_merkle_tree_storage_size -= len(serialized_bounds_mt) * num_transactions
+            # # 减去多余的边界
+            # firstBlock = blockchain_mt.getBlock(0)
+            # firstTransactionBatch = firstBlock.getTransaction()
+            # firstTransactionBounds = firstTransactionBatch[0].bounds
+            # serialized_bounds_mt = pickle.dumps(firstTransactionBounds)
+            # # 减去交易中多的边界
+            # total_merkle_tree_storage_size -= len(serialized_bounds_mt) * num_transactions
 
             """-----------对存在的查询条件---------"""
             attributes_to_search = random.sample([tx for tx in transactions], min(50, num_transactions))
@@ -991,7 +1069,6 @@ def calc_trace_every_n():
                     else:
                         # 如果交易是第一次出现，添加 -1 作为占位符
                         tx.pre_index = -1
-                        # tx.append(-1)
 
                     # 更新 mapping_r，将当前交易的 ID 映射到当前区块索引
                     mapping_r[tx_id] = current_block_index
@@ -1012,9 +1089,10 @@ def calc_trace_every_n():
             for block in blockchain_r.chain:
                 serialized_block = pickle.dumps(block)
                 total_rtree_storage_size += len(serialized_block)
-            serialized_trans = pickle.dumps(transactions)
-            # 减去多的一份交易
-            total_rtree_storage_size -= len(serialized_trans)
+            # TODO
+            # serialized_trans = pickle.dumps(transactions)
+            # # 减去多的一份交易
+            # total_rtree_storage_size -= len(serialized_trans)
 
             '''
             mbr_RTree 构建 存储
@@ -1026,14 +1104,14 @@ def calc_trace_every_n():
                 current_block_index = blockchain_mbr.length()  # 当前区块的索引
 
                 for tx in tx_batch:
-                    tx_id = tx[-2]  # 假设 tx_id 是交易的唯一标识符
+                    tx_id = tx.attribute[-1]  # 假设 tx_id 是交易的唯一标识符
                     if tx_id in mapping_mbr:
                         # 如果交易的历史版本已经存在，则将历史区块索引添加到当前交易
                         history_block_index = mapping_mbr[tx_id]
-                        tx.append(history_block_index)
+                        tx.pre_index = history_block_index
                     else:
                         # 如果交易是第一次出现，添加 -1 作为占位符
-                        tx.append(-1)
+                        tx.pre_index = -1
 
                     # 更新 mapping_mbr，将当前交易的 ID 映射到当前区块索引
                     mapping_mbr[tx_id] = current_block_index
@@ -1054,9 +1132,10 @@ def calc_trace_every_n():
             for block in blockchain_mbr.chain:
                 serialized_block_mbr = pickle.dumps(block)
                 total_rtree_storage_size_mbr += len(serialized_block_mbr)
-            serialized_trans_mbr = pickle.dumps(transactions)
-            # 减去多的一份交易
-            total_rtree_storage_size_mbr -= len(serialized_trans_mbr)
+            # TODO
+            # serialized_trans_mbr = pickle.dumps(transactions)
+            # # 减去多的一份交易
+            # total_rtree_storage_size_mbr -= len(serialized_trans_mbr)
 
             '''
             fabric----MerkleTree 构建 存储
@@ -1097,19 +1176,29 @@ def calc_trace_every_n():
             start_time = time.time()
             for i in range(0, num_transactions, n):
                 tx_batch = transactions[i:i + n]
-                # TODO：修改 根据时间戳排序
-                merkle_tree = MerkleTree(order)
+                merkle_sort_tree = MerkleTree(order)
+
+                # 在批次中计算 bounds[0] 的最小值和最大值
+                bounds_first_values = [tx.bounds[0] for tx in tx_batch]  # 只针对 tx_batch 进行操作
+                min_value = min(bounds_first_values)
+                max_value = max(bounds_first_values)
+                dateRange = [min_value, max_value]
+
                 for tx in tx_batch:
-                    merkle_tree.insert(Transaction(tx.tx_hash, tx.attribute))
+                    # 插入交易的哈希和属性到 Merkle Tree 中
+                    merkle_sort_tree.insert(Transaction(tx.tx_hash, tx.attribute))
 
                 # 计算 Merkle Tree 的根哈希
-                merkle_root_mt = merkle_tree.get_root_hash()
+                merkle_root_mt = merkle_sort_tree.get_root_hash()
 
                 # 创建新的区块
-                new_block = MerkleTreeBlock(merkle_root_mt, merkle_tree, tx_batch, time.time(), "previous_hash_here", n)
+                new_block = MerkleTreeBlock(merkle_root_mt, merkle_sort_tree, tx_batch, time.time(),
+                                            "previous_hash_here", n, dateRange)
+
+                # 将新的区块添加到区块链中
                 blockchain_fabric_sort.add_block(new_block)
 
-                # 计算 Merkle Tree 构建时间
+            # 计算 Merkle Tree 构建时间
             insert_time_with_fabric_sort = time.time() - start_time
 
             # 计算存储大小
@@ -1125,43 +1214,80 @@ def calc_trace_every_n():
             # 减去交易中多的边界
             total_fabric_sort_storage_size -= len(serialized_bounds_fabric_sort) * num_transactions
 
-            """-----------对存在的查询条件---------"""
+            """-----------对存在的查询条件 进行查找和溯源验证---------"""
             attributes_to_search = random.sample([tx for tx in transactions], min(50, num_transactions))
             ''' RTree 搜索 '''
-            # TODO：找到结果数组 然后遍历溯源
+            history_r = []
+            r_res = []
             start_time = time.time()
-            history_res = []
             for tx in attributes_to_search:
                 for block in blockchain_r.chain:
-                    history_res.append(block.tree.search(tx.bounds))
-            r_res = []
-            for r in history_res:
-               r_res.append(get_history_by_id(r, blockchain_r.chain))
-            print('溯源结果：', r_res)
-
+                    history_r.extend(block.tree.search(tx.bounds))
+            for r in history_r:
+                res = []
+                res.append(r)
+                r_res.append(get_history_by_id(r, blockchain_r.chain, res))
             search_time_with_rtree = time.time() - start_time
-            ''' mbr_RTree 搜索 '''
-            # TODO：
+            print('RTree溯源结果：', r_res)
+
+            ''' Mbr_RTree 搜索 '''
+            history_mbr = []
+            mbr_res = []
             start_time = time.time()
             for tx_mbr in attributes_to_search:
                 for block in blockchain_mbr.chain:
                     if intersects(tx_mbr.bounds, block.extra_data):
-                        block.tree.search(tx_mbr.bounds)
+                        history_mbr.extend(block.tree.search(tx_mbr.bounds))
+            for r in history_mbr:
+                res_tmp = []
+                res_tmp.append(r)
+                mbr_res.append(get_history_by_id(r, blockchain_mbr.chain, res_tmp))
             search_time_with_rtree_mbr = time.time() - start_time
-            ''' fabric MerkleTree 搜索 查数据库 再查账本 '''
-            # TODO: 修改
+            print('MRTree溯源结果：', mbr_res)
+
+            ''' Fabric MerkleTree 搜索 查数据库 再查账本 '''
+            # TODO：值查询 范围查询 两种  目前是先写一种简单的 值查询 然后去验证
+            history_fabric = []
             start_time = time.time()
             for tx_fabric in attributes_to_search:
-                for block in blockchain_fabric.chain:
-                    block.tree.search(transactions, tx_fabric, d)
+                # 查询历史数据库并返回匹配的数据
+                matching_transactions = query_transactions(fabric_db, tx_fabric.attribute)
+                for tran_fabric in matching_transactions:
+                    # 遍历区块链 找到对应区块中的数据 哈希验证
+                    for block in blockchain_fabric.chain:
+                        # FIXME：备用方案
+                        # history_fabric.extend(block.tree.search(transactions, tran_fabric, d))
+                        # 优先方案 利用哈希值 遍历区块链 并在区块内无序查找
+                        history_fabric.extend(block.tree.searchByHash(transactions, tran_fabric))
             search_time_with_fabric = time.time() - start_time
-            ''' MerkleTree 搜索 其实就是列表（块体内的事务列表） '''
-            # TODO: 修改
+            print('Fabric-MTree溯源结果：', history_fabric)
+
+            ''' 数据库 查询 MerkleTree内排序 验证 溯源 '''
+            history_fabric_sort = []
             start_time = time.time()
             for tx_fabric_sort in attributes_to_search:
-                for block in blockchain_fabric_sort.chain:
-                    block.tree.search(transactions, tx_fabric_sort, d)
+                # 查询历史数据库并返回匹配的数据
+                matching_transactions = query_transactions(fabric_sort_db, tx_fabric_sort.attribute)
+
+                for tran_fabric_sort in matching_transactions:
+                    # 遍历区块链 找到对应区块中的数据 哈希验证
+                    for block in blockchain_fabric_sort.chain:
+                        # 利用时间戳 遍历区块链 快速定位一些区块 然后在区块内无序查找
+                        if block.extra_data[0] <= tran_fabric_sort["bounds"][0] <= block.extra_data[1]:
+                            # 区块内查找 这里直接使用哈希值判等 TODO：应该继续使用时间戳在块内的默克尔树中使用二分查找 然后比较哈希值
+                            for bt in block.transactions:
+                                if bt.tx_hash == tran_fabric_sort["tx_hash"]:
+                                    # 添加到历史记录
+                                    history_fabric_sort.append(bt)
+                                    # 跳出当前块的循环，直接进入下一个 matching_transactions 循环
+                                    break
+                            else:
+                                # 如果没有匹配的交易，继续下一次外层 block 循环
+                                continue
+                            # 找到匹配交易并已经 append 之后，跳出 block 循环
+                            break
             search_time_with_fabric_sort = time.time() - start_time
+            print('Fabric-sort-MTree溯源结果：', history_fabric_sort)
 
 
             # 保存和打印结果
@@ -1197,7 +1323,7 @@ def calc_trace_every_n():
     d_list_str = [str(d) for d in d_list]
 
     # 在实验结束后调用函数保存结果
-    save_experiment_results(
+    save_history_results(
         d_list_str,
         n_list,
         insert_time_rtree,
@@ -1229,19 +1355,3 @@ def calc_trace_every_n():
            search_time_rtree_mbr, \
            search_time_fabric, \
            search_time_fabric_sort
-
-
-#  TODO：
-def get_history_by_id(t, chain):
-    res = []
-    # 检查 t 是否有 attribute 和 prev_index，并且 prev_index 大于 -1
-    if hasattr(t, 'attribute') and t.attribute and hasattr(t, 'prev_index') and t.prev_index > -1:
-        res.append(t)  # 当前交易加入结果集
-        tx_batch = chain[t.prev_index]  # 获取前一个区块中的交易
-
-        # 遍历 tx_batch 找到属性值中倒数第一个元素相同的交易
-        for tx in tx_batch.tree.transactions:  # 假设 transactions 是该区块中所有交易的列表
-            if tx.attribute[-1] == t.attribute[-1]:  # 匹配倒数第一个元素
-                res += get_history_by_id(tx, chain)  # 递归查找历史交易并加入结果集
-    return res
-

@@ -6,23 +6,23 @@ from matplotlib.ticker import MultipleLocator, FormatStrFormatter, LogLocator, L
 # 加载字体
 from matplotlib.font_manager import FontProperties
 
-# # 使用macOS自带的字体 PingFang SC
-# font_path = "/System/Library/Fonts/PingFang.ttc"
-# font_prop = FontProperties(fname=font_path)
-#
-# rcParams['font.sans-serif'] = [font_prop.get_name()]
-# rcParams['font.family'] = 'sans-serif'
+# 使用macOS自带的字体 PingFang SC
+font_path = "/System/Library/Fonts/PingFang.ttc"
+font_prop = FontProperties(fname=font_path)
 
-# config = {
-#     "font.family": 'serif',
-#     "font.size": 18,
-#     "mathtext.fontset": 'stix',
-#     "font.serif": [font_prop.get_name()],
-# }
-# rcParams.update(config)
+rcParams['font.sans-serif'] = [font_prop.get_name()]
+rcParams['font.family'] = 'sans-serif'
 
-rcParams['font.sans-serif'] = ['Microsoft YaHei']  # 或者 ['SimHei'] 使用黑体
-rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
+config = {
+    "font.family": 'serif',
+    "font.size": 18,
+    "mathtext.fontset": 'stix',
+    "font.serif": [font_prop.get_name()],
+}
+rcParams.update(config)
+
+# rcParams['font.sans-serif'] = ['Microsoft YaHei']  # 或者 ['SimHei'] 使用黑体
+# rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
 
 
 def plot_every_n(
@@ -45,8 +45,8 @@ def plot_every_n(
     # 绘制构建时间的比较
     fig, axs = plt.subplots(1, len(d_list), figsize=(18, 6))
     for i, d in enumerate(d_list):
-        axs[i].plot(n_list, insert_time_rtree[d], label='MR-tree', marker='o')
-        axs[i].plot(n_list, insert_time_rtree_mbr[d], label='MR-tree with MBR', marker='v')
+        axs[i].plot(n_list, insert_time_rtree[d], label='MR-Tree', marker='o')
+        axs[i].plot(n_list, insert_time_rtree_mbr[d], label='$\mathrm{MR-Tree}^{\mathrm{+}}$', marker='v')
         axs[i].plot(n_list, insert_time_merkle_tree[d], label='MH-tree', marker='x')
         axs[i].set_title(f'属性数量={d}')
         axs[i].set_xlabel('区块内交易数量(个)')
@@ -59,9 +59,9 @@ def plot_every_n(
     # 绘制存储容量的比较
     fig, axs = plt.subplots(1, len(d_list), figsize=(18, 6))
     for i, d in enumerate(d_list):
-        axs[i].plot(n_list, storage_size_rtree[d], label='MR-tree', marker='o')
-        axs[i].plot(n_list, storage_size_rtree_mbr[d], label='MR-tree with MBR', marker='v')
-        axs[i].plot(n_list, storage_size_merkle_tree[d], label='Merkle Tree', marker='x')
+        axs[i].plot(n_list, storage_size_rtree[d], label='MR-Tree', marker='o')
+        axs[i].plot(n_list, storage_size_rtree_mbr[d], label='$\mathrm{MR-Tree}^{\mathrm{+}}$', marker='v')
+        axs[i].plot(n_list, storage_size_merkle_tree[d], label='MH-Tree', marker='x')
         axs[i].set_title(f'属性数量={d}')
         axs[i].set_xlabel('区块内交易数量(个)')
         axs[i].set_ylabel('大小(bytes)')
@@ -73,9 +73,9 @@ def plot_every_n(
     # 存在条件查询时间比较
     fig, axs = plt.subplots(1, len(d_list), figsize=(18, 6))
     for i, d in enumerate(d_list):
-        axs[i].plot(n_list, search_time_rtree[d], label='MR-tree', marker='o')
-        axs[i].plot(n_list, search_time_rtree_mbr[d], label='MR-tree with MBR', marker='v')
-        axs[i].plot(n_list, search_time_merkle_tree[d], label='Merkle Tree', marker='x')
+        axs[i].plot(n_list, search_time_rtree[d], label='MR-Tree', marker='o')
+        axs[i].plot(n_list, search_time_rtree_mbr[d], label='$\mathrm{MR-Tree}^{\mathrm{+}}$', marker='v')
+        axs[i].plot(n_list, search_time_merkle_tree[d], label='MH-Tree', marker='x')
         axs[i].set_title(f'属性数量={d}')
         axs[i].set_xlabel('区块内交易数量(个)')
         axs[i].set_ylabel('时间(s)')
@@ -90,9 +90,9 @@ def plot_every_n(
     # 不存在条件查询时间比较
     fig, axs = plt.subplots(1, len(d_list), figsize=(18, 6))
     for i, d in enumerate(d_list):
-        axs[i].plot(n_list, search_no_time_rtree[d], label='MR-tree', marker='o')
-        axs[i].plot(n_list, search_no_time_rtree_mbr[d], label='MR-tree with MBR', marker='v')
-        axs[i].plot(n_list, search_no_time_merkle_tree[d], label='Merkle Tree', marker='x')
+        axs[i].plot(n_list, search_no_time_rtree[d], label='MR-Tree', marker='o')
+        axs[i].plot(n_list, search_no_time_rtree_mbr[d], label='$\mathrm{MR-Tree}^{\mathrm{+}}$', marker='v')
+        axs[i].plot(n_list, search_no_time_merkle_tree[d], label='MH-Tree', marker='x')
         axs[i].set_title(f'属性数量={d}')
         axs[i].set_xlabel('区块内交易数量(个)')
         axs[i].set_ylabel('时间(s)')
@@ -125,9 +125,9 @@ def plot_every_d(
     # 绘制构建时间的比较
     fig, axs = plt.subplots(1, len(n_list), figsize=(18, 6))
     for i, n in enumerate(n_list):
-        axs[i].plot(d_list, insert_time_rtree[n], label='MR-tree', marker='o')
-        axs[i].plot(d_list, insert_time_rtree_mbr[n], label='MR-tree with MBR', marker='v')
-        axs[i].plot(d_list, insert_time_merkle_tree[n], label='Merkle Tree', marker='x')
+        axs[i].plot(d_list, insert_time_rtree[n], label='MR-Tree', marker='o')
+        axs[i].plot(d_list, insert_time_rtree_mbr[n], label='$\mathrm{MR-Tree}^{\mathrm{+}}$', marker='v')
+        axs[i].plot(d_list, insert_time_merkle_tree[n], label='MH-Tree', marker='x')
         axs[i].set_title(f'区块内交易量={n}')
         axs[i].set_xlabel('属性数量(个)')
         axs[i].set_ylabel('时间(s)')
@@ -139,9 +139,9 @@ def plot_every_d(
     # 绘制存储容量的比较
     fig, axs = plt.subplots(1, len(n_list), figsize=(18, 6))
     for i, n in enumerate(n_list):
-        axs[i].plot(d_list, storage_size_rtree[n], label='MR-tree', marker='o')
-        axs[i].plot(d_list, storage_size_rtree_mbr[n], label='MR-tree with MBR', marker='v')
-        axs[i].plot(d_list, storage_size_merkle_tree[n], label='Merkle Tree', marker='x')
+        axs[i].plot(d_list, storage_size_rtree[n], label='MR-Tree', marker='o')
+        axs[i].plot(d_list, storage_size_rtree_mbr[n], label='$\mathrm{MR-Tree}^{\mathrm{+}}$', marker='v')
+        axs[i].plot(d_list, storage_size_merkle_tree[n], label='MH-Tree', marker='x')
         axs[i].set_title(f'区块内交易量={n}')
         axs[i].set_xlabel('属性数量(个)')
         axs[i].set_ylabel('大小(bytes)')
@@ -153,9 +153,9 @@ def plot_every_d(
     # 存在条件下搜索时间的比较
     fig, axs = plt.subplots(1, len(n_list), figsize=(18, 6))
     for i, n in enumerate(n_list):
-        axs[i].plot(d_list, search_time_rtree[n], label='MR-tree', marker='o')
-        axs[i].plot(d_list, search_time_rtree_mbr[n], label='MR-tree with MBR', marker='v')
-        axs[i].plot(d_list, search_time_merkle_tree[n], label='Merkle Tree', marker='x')
+        axs[i].plot(d_list, search_time_rtree[n], label='MR-Tree', marker='o')
+        axs[i].plot(d_list, search_time_rtree_mbr[n], label='$\mathrm{MR-Tree}^{\mathrm{+}}$', marker='v')
+        axs[i].plot(d_list, search_time_merkle_tree[n], label='MH-Tree', marker='x')
         axs[i].set_title(f'区块内交易量={n}')
         axs[i].set_xlabel('属性数量(个)')
         axs[i].set_ylabel('时间(s)')
@@ -168,9 +168,9 @@ def plot_every_d(
     # 不存在条件下搜索时间的比较
     fig, axs = plt.subplots(1, len(n_list), figsize=(18, 6))
     for i, n in enumerate(n_list):
-        axs[i].plot(d_list, search_no_time_rtree[n], label='MR-tree', marker='o')
-        axs[i].plot(d_list, search_no_time_rtree_mbr[n], label='MR-tree with MBR', marker='v')
-        axs[i].plot(d_list, search_no_time_merkle_tree[n], label='Merkle Tree', marker='x')
+        axs[i].plot(d_list, search_no_time_rtree[n], label='MR-Tree', marker='o')
+        axs[i].plot(d_list, search_no_time_rtree_mbr[n], label='$\mathrm{MR-Tree}^{\mathrm{+}}$', marker='v')
+        axs[i].plot(d_list, search_no_time_merkle_tree[n], label='MH-Tree', marker='x')
         axs[i].set_title(f'区块内交易量={n}')
         axs[i].set_xlabel('属性数量(个)')
         axs[i].set_ylabel('时间(s)')
@@ -328,10 +328,10 @@ def plot_trace_every_n(
     # 绘制构建时间的比较
     fig, axs = plt.subplots(1, len(d_list), figsize=(18, 6))
     for i, d in enumerate(d_list):
-        axs[i].plot(n_list, insert_time_rtree[d], label='MR-tree', marker='o')
-        axs[i].plot(n_list, insert_time_rtree_mbr[d], label='MR-tree with MBR', marker='v')
+        axs[i].plot(n_list, insert_time_rtree[d], label='MR-Tree', marker='o')
+        axs[i].plot(n_list, insert_time_rtree_mbr[d], label='$\mathrm{MR-Tree}^{\mathrm{+}}$', marker='v')
         axs[i].plot(n_list, insert_time_fabric[d], label='Fabric', marker='x')
-        axs[i].plot(n_list, insert_time_fabric_sort[d], label='Fabric with Sorting', marker='s')
+        axs[i].plot(n_list, insert_time_fabric_sort[d], label='$\mathrm{Fabric}^{\mathrm{+}}$', marker='s')
         axs[i].set_title(f'属性数量={d}')
         axs[i].set_xlabel('区块内交易数量(个)')
         axs[i].set_ylabel('时间(s)')
@@ -343,10 +343,10 @@ def plot_trace_every_n(
     # 绘制存储容量的比较
     fig, axs = plt.subplots(1, len(d_list), figsize=(18, 6))
     for i, d in enumerate(d_list):
-        axs[i].plot(n_list, storage_size_rtree[d], label='MR-tree', marker='o')
-        axs[i].plot(n_list, storage_size_rtree_mbr[d], label='MR-tree with MBR', marker='v')
+        axs[i].plot(n_list, storage_size_rtree[d], label='MR-Tree', marker='o')
+        axs[i].plot(n_list, storage_size_rtree_mbr[d], label='$\mathrm{MR-Tree}^{\mathrm{+}}$', marker='v')
         axs[i].plot(n_list, storage_size_fabric[d], label='Fabric', marker='x')
-        axs[i].plot(n_list, storage_size_fabric_sort[d], label='Fabric with Sorting', marker='s')
+        axs[i].plot(n_list, storage_size_fabric_sort[d], label='$\mathrm{Fabric}^{\mathrm{+}}$', marker='s')
         axs[i].set_title(f'属性数量={d}')
         axs[i].set_xlabel('区块内交易数量(个)')
         axs[i].set_ylabel('大小(bytes)')
@@ -358,10 +358,10 @@ def plot_trace_every_n(
     # 存在条件查询时间比较
     fig, axs = plt.subplots(1, len(d_list), figsize=(18, 6))
     for i, d in enumerate(d_list):
-        axs[i].plot(n_list, search_time_rtree[d], label='MR-tree', marker='o')
-        axs[i].plot(n_list, search_time_rtree_mbr[d], label='MR-tree with MBR', marker='v')
+        axs[i].plot(n_list, search_time_rtree[d], label='MR-Tree', marker='o')
+        axs[i].plot(n_list, search_time_rtree_mbr[d], label='$\mathrm{MR-Tree}^{\mathrm{+}}$', marker='v')
         axs[i].plot(n_list, search_time_fabric[d], label='Fabric', marker='x')
-        axs[i].plot(n_list, search_time_fabric_sort[d], label='Fabric with Sorting', marker='s')
+        axs[i].plot(n_list, search_time_fabric_sort[d], label='$\mathrm{Fabric}^{\mathrm{+}}$', marker='s')
         axs[i].set_title(f'属性数量={d}')
         axs[i].set_xlabel('区块内交易数量(个)')
         axs[i].set_ylabel('时间(s)')
@@ -419,6 +419,23 @@ def plot_from_saved_data(file_path, plot_type='n'):
             results['search_no_time_rtree_mbr'],
             results['search_no_time_merkle_tree']
         )
+    elif plot_type == "trace":
+        plot_trace_every_n(
+            results['d_list'],
+            results['n_list'],
+            results['insert_time_rtree'],
+            results['insert_time_rtree_mbr'],
+            results['insert_time_fabric'],
+            results['insert_time_fabric_sort'],
+            results['storage_size_rtree'],
+            results['storage_size_rtree_mbr'],
+            results['storage_size_fabric'],
+            results['storage_size_fabric_sort'],
+            results['search_time_rtree'],
+            results['search_time_rtree_mbr'],
+            results['search_time_fabric'],
+            results['search_time_fabric_sort']
+        )
     else:
         print("Invalid plot type. Please use 'n' or 'd'.")
 
@@ -426,3 +443,4 @@ def plot_from_saved_data(file_path, plot_type='n'):
 # # 调用函数绘制图表
 # plot_from_saved_data('output/every_n_results.json', plot_type='n')
 # plot_from_saved_data('output/every_d_results.json', plot_type='d')
+# plot_from_saved_data('output/history_every_n_results.json', plot_type='trace')

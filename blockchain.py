@@ -599,6 +599,11 @@ class MerkleTree:
         # print(f"M树查询结果: {results}")
         return results
 
+    def searchChain(self, trans, attr):
+        results = []
+        self._searchChain(trans, attr, results)
+        return results
+
     def get_root_hash(self):
         return self.root.hash_value if self.root else None
 
@@ -608,16 +613,29 @@ class MerkleTree:
     def _search(self, trans, attr, results, d):
         # 遍历所有交易
         for tx in trans:
-            # 如果 attribute 是字典，使用键访问
-            if isinstance(tx.attribute, dict) and isinstance(attr.attribute, dict):
-                if all(tx.attribute[attr_name] == attr.attribute[attr_name] for attr_name in attr.attribute.keys()):
-                    results.append(tx)
-            # 如果 attribute 是列表，使用索引访问
-            elif isinstance(tx.attribute, list) and isinstance(attr.attribute, list):
-                if all(tx.attribute[i] == attr.attribute[i] for i in range(d)):
-                    results.append(tx)
-            else:
-                print("tx.attribute 和 attr.attribute 的结构不匹配")
+            # print(tx.attribute)
+            # print(attr.attribute)
+            # if all(tx.attribute[attr_name] == attr.attribute[attr_name] for attr_name in attr.attribute.keys()):
+            #     results.append(tx)
+
+            if all(tx.attribute[i] == attr.attribute[i] for i in range(d)):
+                results.append(tx)
+            # # 如果 attribute 是字典，使用键访问
+            # if isinstance(tx.attribute, dict) and isinstance(attr.attribute, dict):
+            #     if all(tx.attribute[attr_name] == attr.attribute[attr_name] for attr_name in attr.attribute.keys()):
+            #         results.append(tx)
+            # # 如果 attribute 是列表，使用索引访问
+            # elif isinstance(tx.attribute, list) and isinstance(attr.attribute, list):
+            #     if all(tx.attribute[i] == attr.attribute[i] for i in range(d)):
+            #         results.append(tx)
+            # else:
+            #     print("tx.attribute 和 attr.attribute 的结构不匹配")
+
+    def _searchChain(self, trans, attr, results):
+        # 遍历所有交易
+        for tx in trans:
+            if all(tx.attribute[attr_name] == attr.attribute[attr_name] for attr_name in attr.attribute.keys()):
+                results.append(tx)
 
     def _verify_transaction(self, node, tx_hash):
         if node is None:
@@ -638,17 +656,27 @@ class MerkleTree:
         tree.root = MerkleNode.from_dict(data['root'])
         return tree
 
+    def searchByHash(self, trans, attr):
+        results = []
+        # 遍历所有交易
+        for tx in trans:
+            if tx.tx_hash == attr["tx_hash"]:
+                results.append(tx)
+        return results
+
+
+
 # 默克尔树区块链中的一个区块
 class MerkleTreeBlock:
     # def __init__(self, merkle_root, *args, **kwargs):
     #     super().__init__(*args, **kwargs)
     #     self.merkle_root = merkle_root
-    def __init__(self, merkle_root, merkle_tree, transactions, timestamp, prev_hash, max_transactions=8):
+    def __init__(self, merkle_root, merkle_tree, transactions, timestamp, prev_hash, max_transactions=8, extra_data=None):
         # 块头
         self.merkle_root = merkle_root  # Merkle Tree根哈希
         self.timestamp = timestamp  # 区块的时间戳
         self.prev_hash = prev_hash  # 前一个区块的哈希
-        self.extra_data = None  # 用于存储额外数据
+        self.extra_data = extra_data  # 用于存储额外数据
 
         # 块体
         self.tree = merkle_tree
