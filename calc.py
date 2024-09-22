@@ -29,6 +29,7 @@ def get_history_by_id(t, chain, res):
             if tx.attribute[-1] == t.attribute[-1] and tx.pre_index != t.pre_index:  # 匹配倒数第一个元素 即id
                 res.append(tx)  # 当前交易加入结果集
                 get_history_by_id(tx, chain, res)  # 递归查找历史交易并加入结果集
+    print('打印', len(res))
     return res
 
 # 用于溯源 从历史数据库查询所有历史数据 ———— 适用于后两种方案
@@ -1162,13 +1163,13 @@ def calc_trace_every_n():
             for block in blockchain_fabric.chain:
                 serialized_block_mt = pickle.dumps(block)
                 total_fabric_storage_size += len(serialized_block_mt)
-            # 减去多余的边界
-            firstBlock = blockchain_fabric.getBlock(0)
-            firstTransactionBatch = firstBlock.getTransaction()
-            firstTransactionBounds = firstTransactionBatch[0].bounds
-            serialized_bounds_mt = pickle.dumps(firstTransactionBounds)
-            # 减去交易中多的边界
-            total_fabric_storage_size -= len(serialized_bounds_mt) * num_transactions
+            # # 减去多余的边界
+            # firstBlock = blockchain_fabric.getBlock(0)
+            # firstTransactionBatch = firstBlock.getTransaction()
+            # firstTransactionBounds = firstTransactionBatch[0].bounds
+            # serialized_bounds_mt = pickle.dumps(firstTransactionBounds)
+            # # 减去交易中多的边界
+            # total_fabric_storage_size -= len(serialized_bounds_mt) * num_transactions
 
             '''
             fabric_sort----MerkleTree构建 块体内时间戳排序
@@ -1206,13 +1207,13 @@ def calc_trace_every_n():
             for block in blockchain_fabric_sort.chain:
                 serialized_block_fabric_sort = pickle.dumps(block)
                 total_fabric_sort_storage_size += len(serialized_block_fabric_sort)
-            # 减去多余的边界
-            firstBlock_fabric_sort = blockchain_fabric_sort.getBlock(0)
-            firstTransactionBatch_fabric_sort = firstBlock_fabric_sort.getTransaction()
-            firstTransactionBounds_fabric_sort = firstTransactionBatch_fabric_sort[0].bounds
-            serialized_bounds_fabric_sort = pickle.dumps(firstTransactionBounds_fabric_sort)
-            # 减去交易中多的边界
-            total_fabric_sort_storage_size -= len(serialized_bounds_fabric_sort) * num_transactions
+            # # 减去多余的边界
+            # firstBlock_fabric_sort = blockchain_fabric_sort.getBlock(0)
+            # firstTransactionBatch_fabric_sort = firstBlock_fabric_sort.getTransaction()
+            # firstTransactionBounds_fabric_sort = firstTransactionBatch_fabric_sort[0].bounds
+            # serialized_bounds_fabric_sort = pickle.dumps(firstTransactionBounds_fabric_sort)
+            # # 减去交易中多的边界
+            # total_fabric_sort_storage_size -= len(serialized_bounds_fabric_sort) * num_transactions
 
             """-----------对存在的查询条件 进行查找和溯源验证---------"""
             attributes_to_search = random.sample([tx for tx in transactions], min(50, num_transactions))
@@ -1228,6 +1229,10 @@ def calc_trace_every_n():
                 res.append(r)
                 r_res.append(get_history_by_id(r, blockchain_r.chain, res))
             search_time_with_rtree = time.time() - start_time
+            # if len(history_r) > 0:
+            #     search_time_with_rtree = search_time_with_rtree / len(history_r) * min(50, num_transactions)
+            # else:
+            #     search_time_with_rtree = search_time_with_rtree * min(50, num_transactions)
             print('RTree溯源结果：', r_res)
 
             ''' Mbr_RTree 搜索 '''
@@ -1243,6 +1248,10 @@ def calc_trace_every_n():
                 res_tmp.append(r)
                 mbr_res.append(get_history_by_id(r, blockchain_mbr.chain, res_tmp))
             search_time_with_rtree_mbr = time.time() - start_time
+            # if len(history_mbr) > 0:
+            #     search_time_with_rtree_mbr = search_time_with_rtree_mbr / len(history_mbr) * min(50, num_transactions)
+            # else:
+            #     search_time_with_rtree_mbr = search_time_with_rtree_mbr * min(50, num_transactions)
             print('MRTree溯源结果：', mbr_res)
 
             ''' Fabric MerkleTree 搜索 查数据库 再查账本 '''

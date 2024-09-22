@@ -662,6 +662,7 @@ class MerkleTree:
         for tx in trans:
             if tx.tx_hash == attr["tx_hash"]:
                 results.append(tx)
+                break
         return results
 
 
