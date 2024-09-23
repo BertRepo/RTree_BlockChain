@@ -7,24 +7,25 @@ from matplotlib.ticker import MultipleLocator, FormatStrFormatter, LogLocator, L
 from matplotlib.font_manager import FontProperties
 
 # ！！！ 适用于 Mac OS
-# 使用macOS自带的字体 PingFang SC
-font_path = "/System/Library/Fonts/PingFang.ttc"
-font_prop = FontProperties(fname=font_path)
-
-rcParams['font.sans-serif'] = [font_prop.get_name()]
-rcParams['font.family'] = 'sans-serif'
-
-config = {
-    "font.family": 'serif',
-    "font.size": 16,
-    "mathtext.fontset": 'stix',
-    "font.serif": [font_prop.get_name()],
-}
-rcParams.update(config)
+# font_path = "/System/Library/Fonts/PingFang.ttc" # 使用macOS自带的字体 PingFang SC
+# font_prop = FontProperties(fname=font_path)
+# rcParams['font.sans-serif'] = [font_prop.get_name()]
+# rcParams['font.family'] = 'sans-serif'
+# config = {
+#     "font.family": 'serif',
+#     "font.size": 16,
+#     "mathtext.fontset": 'stix',
+#     "font.serif": [font_prop.get_name()],
+# }
+# rcParams.update(config)
 
 # ！！！ 适用于 Win OS
 # rcParams['font.sans-serif'] = ['Microsoft YaHei']  # 或者 ['SimHei'] 使用黑体
 # rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
+
+# ！！！ 适用于 Linux OS
+plt.rcParams['font.sans-serif'] = ['Noto Sans CJK JP']
+rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
 
 
 def plot_every_n(
