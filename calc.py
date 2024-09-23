@@ -304,47 +304,65 @@ def calc_every_n():
             """-----------对存在的查询条件---------"""
             attributes_to_search = random.sample([tx for tx in transactions], min(50, num_transactions))
             ''' RTree 搜索 '''
+            res_r = []
             start_time = time.time()
             for tx in attributes_to_search:
                 for block in blockchain_r.chain:
-                    block.tree.search(tx.bounds)
+                    res_r.extend(block.tree.search(tx.bounds))
             search_time_with_rtree = time.time() - start_time
+            if len(res_r) > 0:
+                search_time_with_rtree = search_time_with_rtree / len(res_r)
             ''' mbr_RTree 搜索 '''
+            res_mbr = []
             start_time = time.time()
             for tx_mbr in attributes_to_search:
                 for block in blockchain_mbr.chain:
                     if intersects(tx_mbr.bounds, block.extra_data):
-                        block.tree.search(tx_mbr.bounds)
+                        res_mbr.extend(block.tree.search(tx_mbr.bounds))
             search_time_with_rtree_mbr = time.time() - start_time
+            if len(res_mbr) > 0:
+                search_time_with_rtree_mbr = search_time_with_rtree_mbr / len(res_mbr)
             ''' MerkleTree 搜索 其实就是列表（块体内的事务列表） '''
+            res_mt = []
             start_time = time.time()
             for attr in attributes_to_search:
                 for block in blockchain_mt.chain:
-                    block.tree.search(transactions, attr, d)
+                    res_mt.extend(block.tree.search(transactions, attr, d))
             search_time_with_list = time.time() - start_time
+            if len(res_mt) > 0:
+                search_time_with_list = search_time_with_list / min(len(res_mt), 50)
 
             """-----------对不存在的查询条件---------"""
             # 随机生成假数据
             no_attributes_to_search = get_random_nonexistent_data(transactions, min(50, num_transactions), d)
             ''' RTree 搜索 '''
+            res_no_r = []
             start_time = time.time()
             for tx in no_attributes_to_search:
                 for block in blockchain_r.chain:
-                    block.tree.search(tx.bounds)
+                    res_no_r.extend(block.tree.search(tx.bounds))
             search_no_time_with_rtree = time.time() - start_time
+            if len(res_no_r) > 0:
+                search_no_time_with_rtree = search_no_time_with_rtree / len(res_no_r)
             ''' mbr_RTree 搜索 '''
+            res_no_mbr =[]
             start_time = time.time()
             for tx_mbr in no_attributes_to_search:
                 for block in blockchain_mbr.chain:
                     if intersects(tx_mbr.bounds, block.extra_data):
-                        block.tree.search(tx_mbr.bounds)
+                        res_no_mbr.extend(block.tree.search(tx_mbr.bounds))
             search_no_time_with_rtree_mbr = time.time() - start_time
+            if len(res_no_mbr) > 0:
+                search_no_time_with_rtree_mbr = search_no_time_with_rtree_mbr / len(res_no_mbr)
             ''' MerkleTree 搜索 其实就是列表（块体内的事务列表） '''
+            res_no_mt = []
             start_time = time.time()
             for attr in no_attributes_to_search:
                 for block in blockchain_mt.chain:
-                    block.tree.search(transactions, attr, d)
+                    res_no_mt.extend(block.tree.search(transactions, attr, d))
             search_no_time_with_list = time.time() - start_time
+            if len(res_no_mt) > 0:
+                search_no_time_with_list = search_no_time_with_list / min(len(res_no_mt), 50)
 
             # 保存和打印结果
             insert_time_results_rtree.append(insert_time_with_rtree)
