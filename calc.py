@@ -146,7 +146,7 @@ def calc_every_n():
     # 区块内最大交易量
     n_list = [5, 10, 15, 20, 25, 30, 35, 40, 45]
     # 属性数量
-    d_list = [2, 6, 10]
+    d_list = [2, 6, 10, 14]
 
     # 构建时间
     insert_time_rtree = {}
@@ -413,7 +413,7 @@ def calc_every_n():
         search_no_time_rtree,
         search_no_time_rtree_mbr,
         search_no_time_merkle_tree,
-        'output/every_n_results.json'
+        'output/every_n_results_14.json'
     )
 
     return d_list, \
@@ -445,7 +445,7 @@ def calc_every_d():
     # 区块内最大交易量
     n_list = [5, 25, 45]
     # 属性数量
-    d_list = [2, 3, 4, 5, 6, 7, 8, 9, 10]
+    d_list = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 
     # 构建时间
     insert_time_rtree = {}
@@ -709,7 +709,7 @@ def calc_every_d():
         search_no_time_rtree,
         search_no_time_rtree_mbr,
         search_no_time_merkle_tree,
-        'output/every_d_results.json'
+        'output/every_d_results_14.json'
     )
 
     return d_list, \
@@ -1021,7 +1021,7 @@ def calc_trace_every_n():
     # 区块内最大交易量
     n_list = [5, 10, 15, 20, 25, 30, 35, 40, 45]
     # 属性数量
-    d_list = [2, 6, 10]
+    d_list = [2, 6, 10, 14]
 
     # 构建时间
     insert_time_rtree = {}
@@ -1383,7 +1383,7 @@ def calc_trace_every_n():
         search_time_rtree_mbr,
         search_time_fabric,
         search_time_fabric_sort,
-        'output/history_every_n_results.json'
+        'output/history_every_n_results_14.json'
     )
 
     return d_list, \

@@ -7,26 +7,109 @@ from matplotlib.ticker import MultipleLocator, FormatStrFormatter, LogLocator, L
 from matplotlib.font_manager import FontProperties
 
 # ！！！ 适用于 Mac OS
-# font_path = "/System/Library/Fonts/PingFang.ttc" # 使用macOS自带的字体 PingFang SC
-# font_prop = FontProperties(fname=font_path)
-# rcParams['font.sans-serif'] = [font_prop.get_name()]
-# rcParams['font.family'] = 'sans-serif'
-# config = {
-#     "font.family": 'serif',
-#     "font.size": 16,
-#     "mathtext.fontset": 'stix',
-#     "font.serif": [font_prop.get_name()],
-# }
-# rcParams.update(config)
+font_path = "/System/Library/Fonts/PingFang.ttc" # 使用macOS自带的字体 PingFang SC
+font_prop = FontProperties(fname=font_path)
+rcParams['font.sans-serif'] = [font_prop.get_name()]
+rcParams['font.family'] = 'sans-serif'
+config = {
+    "font.family": 'serif',
+    "font.size": 16,
+    "mathtext.fontset": 'stix',
+    "font.serif": [font_prop.get_name()],
+}
+rcParams.update(config)
 
-# ！！！ 适用于 Win OS
+# # ！！！ 适用于 Win OS
 # rcParams['font.sans-serif'] = ['Microsoft YaHei']  # 或者 ['SimHei'] 使用黑体
 # rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
 
-# ！！！ 适用于 Linux OS
-plt.rcParams['font.sans-serif'] = ['Noto Sans CJK JP']
-rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
+# # ！！！ 适用于 Linux OS
+# plt.rcParams['font.sans-serif'] = ['Noto Sans CJK JP']
+# rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
 
+
+# def plot_every_n(
+#         d_list,
+#         n_list,
+#         insert_time_rtree,
+#         insert_time_rtree_mbr,
+#         insert_time_merkle_tree,
+#         storage_size_rtree,
+#         storage_size_rtree_mbr,
+#         storage_size_merkle_tree,
+#         search_time_rtree,
+#         search_time_rtree_mbr,
+#         search_time_merkle_tree,
+#         search_no_time_rtree,
+#         search_no_time_rtree_mbr,
+#         search_no_time_merkle_tree):
+#     """绘制不同区块交易量下对比图"""
+#
+#     # 绘制构建时间的比较
+#     fig, axs = plt.subplots(1, len(d_list), figsize=(18, 6))
+#     for i, d in enumerate(d_list):
+#         axs[i].plot(n_list, insert_time_rtree[d], label='MR-Tree', marker='o')
+#         axs[i].plot(n_list, insert_time_rtree_mbr[d], label='$\mathrm{MR-Tree}^{\mathrm{+}}$', marker='v')
+#         axs[i].plot(n_list, insert_time_merkle_tree[d], label='MH-tree', marker='x')
+#         axs[i].set_title(f'属性数量={d}', fontsize=16)
+#         axs[i].set_xlabel('区块内交易数量(个)', fontsize=16)
+#         axs[i].set_ylabel('时间(s)', fontsize=16)
+#         axs[i].legend(fontsize=16)
+#     fig.suptitle('不同区块交易量下的构建时耗结果图', fontsize=16)
+#     fig.subplots_adjust(wspace=0.2)  # 调整子图之间的水平间距
+#     plt.savefig('insert_times_comparison_n.pdf', format='pdf')
+#     plt.show()
+#
+#     # 绘制存储容量的比较
+#     fig, axs = plt.subplots(1, len(d_list), figsize=(18, 6))
+#     for i, d in enumerate(d_list):
+#         axs[i].plot(n_list, storage_size_rtree[d], label='MR-Tree', marker='o')
+#         axs[i].plot(n_list, storage_size_rtree_mbr[d], label='$\mathrm{MR-Tree}^{\mathrm{+}}$', marker='v')
+#         axs[i].plot(n_list, storage_size_merkle_tree[d], label='MH-Tree', marker='x')
+#         axs[i].set_title(f'属性数量={d}', fontsize=16)
+#         axs[i].set_xlabel('区块内交易数量(个)', fontsize=16)
+#         axs[i].set_ylabel('大小(bytes)', fontsize=16)
+#         axs[i].legend(fontsize=16)
+#     fig.suptitle('不同区块交易量下的存储开销结果图', fontsize=16)
+#     fig.subplots_adjust(wspace=0.2)  # 调整子图之间的水平间距
+#     plt.savefig('storage_size_comparison_n.pdf', format='pdf')
+#     plt.show()
+#
+#     # 存在条件查询时间比较
+#     fig, axs = plt.subplots(1, len(d_list), figsize=(18, 6))
+#     for i, d in enumerate(d_list):
+#         axs[i].plot(n_list, search_time_rtree[d], label='MR-Tree', marker='o')
+#         axs[i].plot(n_list, search_time_rtree_mbr[d], label='$\mathrm{MR-Tree}^{\mathrm{+}}$', marker='v')
+#         axs[i].plot(n_list, search_time_merkle_tree[d], label='MH-Tree', marker='x')
+#         axs[i].set_title(f'属性数量={d}', fontsize=16)
+#         axs[i].set_xlabel('区块内交易数量(个)', fontsize=16)
+#         axs[i].set_ylabel('时间(s)', fontsize=16)
+#         axs[i].legend(fontsize=16)
+#         axs[i].set_yscale('log')
+#         axs[i].yaxis.set_major_locator(LogLocator(base=10.0, numticks=10))
+#         axs[i].yaxis.set_major_formatter(LogFormatter(base=10.0, labelOnlyBase=False))
+#     fig.suptitle('不同区块交易量下的存在条件查询时耗结果图', fontsize=16)
+#     fig.subplots_adjust(wspace=0.3)  # 调整子图之间的水平间距
+#     plt.savefig('search_time_comparison_n.pdf', format='pdf')
+#     plt.show()
+#
+#     # 不存在条件查询时间比较
+#     fig, axs = plt.subplots(1, len(d_list), figsize=(18, 6))
+#     for i, d in enumerate(d_list):
+#         axs[i].plot(n_list, search_no_time_rtree[d], label='MR-Tree', marker='o')
+#         axs[i].plot(n_list, search_no_time_rtree_mbr[d], label='$\mathrm{MR-Tree}^{\mathrm{+}}$', marker='v')
+#         axs[i].plot(n_list, search_no_time_merkle_tree[d], label='MH-Tree', marker='x')
+#         axs[i].set_title(f'属性数量={d}', fontsize=16)
+#         axs[i].set_xlabel('区块内交易数量(个)', fontsize=16)
+#         axs[i].set_ylabel('时间(s)', fontsize=16)
+#         axs[i].legend(fontsize=16)
+#         axs[i].set_yscale('log')
+#         axs[i].yaxis.set_major_locator(LogLocator(base=10.0, numticks=10))
+#         axs[i].yaxis.set_major_formatter(LogFormatter(base=10.0, labelOnlyBase=False))
+#     fig.suptitle('不同区块交易量下的不存在条件查询时耗结果图', fontsize=16)
+#     fig.subplots_adjust(wspace=0.3)  # 调整子图之间的水平间距
+#     plt.savefig('search_no_time_comparison_n.pdf', format='pdf')
+#     plt.show()
 
 def plot_every_n(
         d_list,
@@ -46,70 +129,79 @@ def plot_every_n(
     """绘制不同区块交易量下对比图"""
 
     # 绘制构建时间的比较
-    fig, axs = plt.subplots(1, len(d_list), figsize=(18, 6))
+    fig, axs = plt.subplots(2, 2, figsize=(18, 12))  # 设置2行2列的子图布局
     for i, d in enumerate(d_list):
-        axs[i].plot(n_list, insert_time_rtree[d], label='MR-Tree', marker='o')
-        axs[i].plot(n_list, insert_time_rtree_mbr[d], label='$\mathrm{MR-Tree}^{\mathrm{+}}$', marker='v')
-        axs[i].plot(n_list, insert_time_merkle_tree[d], label='MH-tree', marker='x')
-        axs[i].set_title(f'属性数量={d}', fontsize=16)
-        axs[i].set_xlabel('区块内交易数量(个)', fontsize=16)
-        axs[i].set_ylabel('时间(s)', fontsize=16)
-        axs[i].legend(fontsize=16)
+        row = i // 2  # 计算行索引
+        col = i % 2   # 计算列索引
+        axs[row, col].plot(n_list, insert_time_rtree[d], label='MR-Tree', marker='o')
+        axs[row, col].plot(n_list, insert_time_rtree_mbr[d], label='$\mathrm{MR-Tree}^{\mathrm{+}}$', marker='v')
+        axs[row, col].plot(n_list, insert_time_merkle_tree[d], label='MH-tree', marker='x')
+        axs[row, col].set_title(f'属性数量={d}', fontsize=16)
+        axs[row, col].set_xlabel('区块内交易数量(个)', fontsize=16)
+        axs[row, col].set_ylabel('时间(s)', fontsize=16)
+        axs[row, col].legend(fontsize=16)
     fig.suptitle('不同区块交易量下的构建时耗结果图', fontsize=16)
-    fig.subplots_adjust(wspace=0.2)  # 调整子图之间的水平间距
+    fig.subplots_adjust(wspace=0.3, hspace=0.3)  # 调整子图之间的间距
     plt.savefig('insert_times_comparison_n.pdf', format='pdf')
     plt.show()
 
     # 绘制存储容量的比较
-    fig, axs = plt.subplots(1, len(d_list), figsize=(18, 6))
+    fig, axs = plt.subplots(2, 2, figsize=(18, 12))  # 设置2行2列的子图布局
     for i, d in enumerate(d_list):
-        axs[i].plot(n_list, storage_size_rtree[d], label='MR-Tree', marker='o')
-        axs[i].plot(n_list, storage_size_rtree_mbr[d], label='$\mathrm{MR-Tree}^{\mathrm{+}}$', marker='v')
-        axs[i].plot(n_list, storage_size_merkle_tree[d], label='MH-Tree', marker='x')
-        axs[i].set_title(f'属性数量={d}', fontsize=16)
-        axs[i].set_xlabel('区块内交易数量(个)', fontsize=16)
-        axs[i].set_ylabel('大小(bytes)', fontsize=16)
-        axs[i].legend(fontsize=16)
+        row = i // 2  # 计算行索引
+        col = i % 2   # 计算列索引
+        axs[row, col].plot(n_list, storage_size_rtree[d], label='MR-Tree', marker='o')
+        axs[row, col].plot(n_list, storage_size_rtree_mbr[d], label='$\mathrm{MR-Tree}^{\mathrm{+}}$', marker='v')
+        axs[row, col].plot(n_list, storage_size_merkle_tree[d], label='MH-Tree', marker='x')
+        axs[row, col].set_title(f'属性数量={d}', fontsize=16)
+        axs[row, col].set_xlabel('区块内交易数量(个)', fontsize=16)
+        axs[row, col].set_ylabel('大小(bytes)', fontsize=16)
+        axs[row, col].legend(fontsize=16)
     fig.suptitle('不同区块交易量下的存储开销结果图', fontsize=16)
-    fig.subplots_adjust(wspace=0.2)  # 调整子图之间的水平间距
+    fig.subplots_adjust(wspace=0.3, hspace=0.3)  # 调整子图之间的间距
     plt.savefig('storage_size_comparison_n.pdf', format='pdf')
     plt.show()
 
     # 存在条件查询时间比较
-    fig, axs = plt.subplots(1, len(d_list), figsize=(18, 6))
+    fig, axs = plt.subplots(2, 2, figsize=(18, 12))  # 设置2行2列的子图布局
     for i, d in enumerate(d_list):
-        axs[i].plot(n_list, search_time_rtree[d], label='MR-Tree', marker='o')
-        axs[i].plot(n_list, search_time_rtree_mbr[d], label='$\mathrm{MR-Tree}^{\mathrm{+}}$', marker='v')
-        axs[i].plot(n_list, search_time_merkle_tree[d], label='MH-Tree', marker='x')
-        axs[i].set_title(f'属性数量={d}', fontsize=16)
-        axs[i].set_xlabel('区块内交易数量(个)', fontsize=16)
-        axs[i].set_ylabel('时间(s)', fontsize=16)
-        axs[i].legend(fontsize=16)
-        axs[i].set_yscale('log')
-        axs[i].yaxis.set_major_locator(LogLocator(base=10.0, numticks=10))
-        axs[i].yaxis.set_major_formatter(LogFormatter(base=10.0, labelOnlyBase=False))
+        row = i // 2  # 计算行索引
+        col = i % 2   # 计算列索引
+        axs[row, col].plot(n_list, search_time_rtree[d], label='MR-Tree', marker='o')
+        axs[row, col].plot(n_list, search_time_rtree_mbr[d], label='$\mathrm{MR-Tree}^{\mathrm{+}}$', marker='v')
+        axs[row, col].plot(n_list, search_time_merkle_tree[d], label='MH-Tree', marker='x')
+        axs[row, col].set_title(f'属性数量={d}', fontsize=16)
+        axs[row, col].set_xlabel('区块内交易数量(个)', fontsize=16)
+        axs[row, col].set_ylabel('时间(s)', fontsize=16)
+        axs[row, col].legend(fontsize=16)
+        axs[row, col].set_yscale('log')
+        axs[row, col].yaxis.set_major_locator(LogLocator(base=10.0, numticks=10))
+        axs[row, col].yaxis.set_major_formatter(LogFormatter(base=10.0, labelOnlyBase=False))
     fig.suptitle('不同区块交易量下的存在条件查询时耗结果图', fontsize=16)
-    fig.subplots_adjust(wspace=0.3)  # 调整子图之间的水平间距
+    fig.subplots_adjust(wspace=0.3, hspace=0.3)  # 调整子图之间的间距
     plt.savefig('search_time_comparison_n.pdf', format='pdf')
     plt.show()
 
     # 不存在条件查询时间比较
-    fig, axs = plt.subplots(1, len(d_list), figsize=(18, 6))
+    fig, axs = plt.subplots(2, 2, figsize=(18, 12))  # 设置2行2列的子图布局
     for i, d in enumerate(d_list):
-        axs[i].plot(n_list, search_no_time_rtree[d], label='MR-Tree', marker='o')
-        axs[i].plot(n_list, search_no_time_rtree_mbr[d], label='$\mathrm{MR-Tree}^{\mathrm{+}}$', marker='v')
-        axs[i].plot(n_list, search_no_time_merkle_tree[d], label='MH-Tree', marker='x')
-        axs[i].set_title(f'属性数量={d}', fontsize=16)
-        axs[i].set_xlabel('区块内交易数量(个)', fontsize=16)
-        axs[i].set_ylabel('时间(s)', fontsize=16)
-        axs[i].legend(fontsize=16)
-        axs[i].set_yscale('log')
-        axs[i].yaxis.set_major_locator(LogLocator(base=10.0, numticks=10))
-        axs[i].yaxis.set_major_formatter(LogFormatter(base=10.0, labelOnlyBase=False))
+        row = i // 2  # 计算行索引
+        col = i % 2   # 计算列索引
+        axs[row, col].plot(n_list, search_no_time_rtree[d], label='MR-Tree', marker='o')
+        axs[row, col].plot(n_list, search_no_time_rtree_mbr[d], label='$\mathrm{MR-Tree}^{\mathrm{+}}$', marker='v')
+        axs[row, col].plot(n_list, search_no_time_merkle_tree[d], label='MH-Tree', marker='x')
+        axs[row, col].set_title(f'属性数量={d}', fontsize=16)
+        axs[row, col].set_xlabel('区块内交易数量(个)', fontsize=16)
+        axs[row, col].set_ylabel('时间(s)', fontsize=16)
+        axs[row, col].legend(fontsize=16)
+        axs[row, col].set_yscale('log')
+        axs[row, col].yaxis.set_major_locator(LogLocator(base=10.0, numticks=10))
+        axs[row, col].yaxis.set_major_formatter(LogFormatter(base=10.0, labelOnlyBase=False))
     fig.suptitle('不同区块交易量下的不存在条件查询时耗结果图', fontsize=16)
-    fig.subplots_adjust(wspace=0.3)  # 调整子图之间的水平间距
+    fig.subplots_adjust(wspace=0.3, hspace=0.3)  # 调整子图之间的间距
     plt.savefig('search_no_time_comparison_n.pdf', format='pdf')
     plt.show()
+
 
 
 def plot_every_d(
